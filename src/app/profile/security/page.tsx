@@ -124,7 +124,7 @@ export default function SecurityPage() {
 
                 {/* 2FA Placeholder */}
                 <div className="space-y-6">
-                    <Card variant="outline" className="p-6">
+                    <Card variant="outlined" className="p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <Smartphone className="w-5 h-5 text-gray-400" />
                             <h2 className="text-lg font-bold text-gray-900">2-Алхамт баталгаажуулалт</h2>
@@ -137,7 +137,7 @@ export default function SecurityPage() {
                         </Button>
                     </Card>
 
-                    <Card variant="outline" className="p-6">
+                    <Card variant="outlined" className="p-6">
                         <div className="flex items-center gap-2 mb-4">
                             <Key className="w-5 h-5 text-gray-400" />
                             <h2 className="text-lg font-bold text-gray-900">Нэвтэрсэн төхөөрөмжүүд</h2>
