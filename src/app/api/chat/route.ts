@@ -2,10 +2,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(req: Request) {
     try {
         const { messages, context } = await req.json();
@@ -16,6 +12,10 @@ export async function POST(req: Request) {
                 { status: 500 }
             );
         }
+
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
 
         const systemPrompt = `Сайн байна уу? Та Noble Consulting-ийн ухаалаг туслах байна. 
 Noble Consulting нь гадаад сургалт, виз, аялал, ажлын зуучлалын үйлчилгээ үзүүлдэг.
