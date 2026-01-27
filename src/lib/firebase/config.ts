@@ -28,8 +28,13 @@ if (typeof window !== 'undefined') {
             } else {
                 app = getApps()[0];
             }
+            import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+            // ... inside try block
             auth = getAuth(app);
-            db = getFirestore(app);
+            // Use initializeFirestore to fix "Client is offline" issues
+            db = initializeFirestore(app, {
+                experimentalForceLongPolling: true,
+            });
             storage = getStorage(app);
         } catch (error) {
             console.error('Firebase initialization error:', error);

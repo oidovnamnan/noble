@@ -71,8 +71,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
             } catch (error) {
                 console.error('Error fetching user data:', error);
-                setUser(null);
-                setUserState(null);
+                // FALLBACK: If Firestore fails (offline/rules), DO NOT logout.
+                // Use basic data from the Auth object.
+                if (firebaseUser) {
+                    const basicUser: User = {
+                        id: firebaseUser.uid,
+                        email: firebaseUser.email || '',
+                        firstName: '',
+                        lastName: '',
+                        phone: '',
+                        role: 'customer',
+                        language: 'mn',
+                        notifications: { email: true, push: true, sms: false },
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    };
+                    setUser(basicUser);
+                    setUserState(basicUser);
+                } else {
+                    setUser(null);
+                    setUserState(null);
+                }
             } finally {
                 setLoading(false);
                 setLocalLoading(false);
