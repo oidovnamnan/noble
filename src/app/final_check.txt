@@ -1,0 +1,3 @@
+// Final Page Components Barrel
+// No changes needed, just ensuring directory existence
+export {};

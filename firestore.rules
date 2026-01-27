@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && getUserData().role == 'admin';
+    }
+    
+    function isStaff() {
+      return isSignedIn() && (getUserData().role == 'staff' || getUserData().role == 'admin');
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isStaff() || isOwner(userId);
+      allow create: if isSignedIn();
+      allow update: if isStaff() || isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    // Applications collection
+    match /applications/{appId} {
+      allow read: if isStaff() || (isSignedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow update: if isStaff() || (isSignedIn() && resource.data.customerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Services collection
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Document Types collection
+    match /documentTypes/{typeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // News collection
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+  }
+}

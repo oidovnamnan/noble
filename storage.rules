@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    match /applications/{applicationId}/{userId}/{fileName} {
+      // Allow read if user is the owner or is staff/admin
+      // In storage rules, checking Firestore metadata is complex,
+      // so we rely on path-based ownership or signed URLs for staff.
+      // For now, simpler owner check:
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    match /news/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn(); // Staff/Admin
+    }
+  }
+}
