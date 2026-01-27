@@ -77,8 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const basicUser: User = {
                         id: firebaseUser.uid,
                         email: firebaseUser.email || '',
-                        firstName: '',
-                        lastName: '',
+                        firstName: firebaseUser.displayName?.split(' ')[0] || 'Хэрэглэгч',
+                        lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
                         phone: '',
                         role: 'customer',
                         language: 'mn',
