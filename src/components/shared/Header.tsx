@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Globe, ChevronDown } from 'lucide-react';
-import { useAppStore } from '@/lib/store';
+import { useAppStore, useAuthStore } from '@/lib/store';
 
 const navItems = [
     { href: '/#about', label: { mn: 'Бидний тухай', en: 'About' } },
@@ -16,6 +16,7 @@ const navItems = [
 
 export function Header() {
     const { language, setLanguage } = useAppStore();
+    const { isAuthenticated, user } = useAuthStore();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -78,13 +79,25 @@ export function Header() {
                             {language === 'mn' ? 'EN' : 'MN'}
                         </button>
 
-                        {/* CTA Button */}
-                        <Link
-                            href="/auth/login"
-                            className="hidden sm:inline-flex px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-bold text-sm rounded-xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-105"
-                        >
-                            {language === 'mn' ? 'Эхлэх' : 'Get Started'}
-                        </Link>
+                        {/* Conditional Auth Button */}
+                        {isAuthenticated ? (
+                            <Link
+                                href="/profile"
+                                className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 text-white font-bold text-sm rounded-xl hover:bg-white/20 transition-all border border-white/10"
+                            >
+                                <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-xs text-slate-900">
+                                    {user?.firstName?.charAt(0) || 'U'}
+                                </div>
+                                {language === 'mn' ? 'Профайл' : 'Profile'}
+                            </Link>
+                        ) : (
+                            <Link
+                                href="/auth/login"
+                                className="hidden sm:inline-flex px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-bold text-sm rounded-xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-105"
+                            >
+                                {language === 'mn' ? 'Эхлэх' : 'Get Started'}
+                            </Link>
+                        )}
 
                         {/* Mobile menu button */}
                         <button
