@@ -1,7 +1,7 @@
 // Firebase Configuration and Initialization
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -28,7 +28,6 @@ if (typeof window !== 'undefined') {
             } else {
                 app = getApps()[0];
             }
-            import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
             // ... inside try block
             auth = getAuth(app);
             // Use initializeFirestore to fix "Client is offline" issues
