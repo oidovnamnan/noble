@@ -59,10 +59,16 @@ export default function LoginPage() {
     };
 
     const handleGoogleLogin = async () => {
+        console.log('Google Login Clicked!'); // Debug log
+        // alert('Debugging: Button clicked!'); // Visual confirmation
+
         if (!auth) {
+            console.error('Auth is missing!');
             setError('Системийн тохиргоо дутуу байна (Firebase Init).');
             return;
         }
+
+        console.log('Auth is present, starting popup...');
 
         try {
             setLoading(true);
