@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import {
     signInWithEmailAndPassword,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithRedirect,
+    getRedirectResult
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { Button, Input, Card } from '@/components/ui';
@@ -20,6 +21,28 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [status, setStatus] = useState<string | null>(null);
+
+    // Handle redirect result
+    React.useEffect(() => {
+        const checkRedirect = async () => {
+            if (!auth) return;
+            try {
+                const result = await getRedirectResult(auth);
+                if (result) {
+                    router.push('/');
+                }
+            } catch (err: any) {
+                console.error('Redirect Error:', err);
+                if (err.code === 'auth/cross-origin-auth-not-supported') {
+                    setError('Таны хөтөч энэ нэвтрэх хэсгийг дэмжихгүй байна. Өөр хөтөч ашиглана уу.');
+                } else {
+                    setError('Нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.');
+                }
+            }
+        };
+        checkRedirect();
+    }, [router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,12 +96,12 @@ export default function LoginPage() {
         try {
             setLoading(true);
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-            router.push('/');
+            // Using redirect instead of popup to fix COOP issues
+            console.log('Using signInWithRedirect...');
+            await signInWithRedirect(auth, provider);
         } catch (err: any) {
             console.error('Google Login Error:', err);
             setError('Google-ээр нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.');
-        } finally {
             setLoading(false);
         }
     };
