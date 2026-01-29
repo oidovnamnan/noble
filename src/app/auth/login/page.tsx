@@ -7,8 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
     signInWithEmailAndPassword,
     GoogleAuthProvider,
-    signInWithRedirect,
-    getRedirectResult
+    signInWithPopup
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { Button, Input, Card } from '@/components/ui';
@@ -23,53 +22,16 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [status, setStatus] = useState<string | null>(null);
 
-    // Handle redirect result
+    // Simplified check
     React.useEffect(() => {
-        const checkRedirect = async () => {
-            if (!auth) return;
-
-            console.log('Component mounted, checking for redirect result...');
-            try {
-                const result = await getRedirectResult(auth);
-                if (result) {
-                    console.log('SUCCESS: Redirect result found:', result.user.email);
-                    setStatus('Амжилттай нэвтэрлээ. Шилжиж байна...');
-                    router.push('/');
-                } else {
-                    console.log('No redirect result (initial load or normal link).');
-                }
-            } catch (err: any) {
-                console.error('CRITICAL: Redirect Error:', err);
-                if (err.code === 'auth/cross-origin-auth-not-supported') {
-                    setError('Таны хөтөч энэ нэвтрэх хэсгийг дэмжихгүй байна. Өөр хөтөч ашиглана уу.');
-                } else if (err.code === 'auth/popup-blocked') {
-                    setError('Цонх хаагдсан байна. Зөвшөөрнө үү.');
-                } else {
-                    setError(`Нэвтрэхэд алдаа гарлаа: ${err.message}`);
-                }
-            }
-        };
-        checkRedirect();
-    }, [router]);
-
-    const manualCheck = async () => {
         if (!auth) return;
-        setStatus('Нэвтрэх явцыг дахин шалгаж байна...');
-        try {
-            const result = await getRedirectResult(auth);
-            if (result) {
-                router.push('/');
-            } else {
-                setStatus('Ямар нэг үр дүн олдсонгүй. Имэйлээр нэвтрээд үзнэ үү.');
-            }
-        } catch (err: any) {
-            setError(`Алдаа: ${err.message}`);
-        }
-    };
+        console.log('Login page initialized');
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setStatus('Нэвтэрч байна...');
 
         if (!auth) {
             setError('Системийн тохиргоо дутуу байна (Firebase API key).');
@@ -78,23 +40,19 @@ export default function LoginPage() {
 
         if (!isValidEmail(email)) {
             setError('Имэйл хаяг буруу байна');
-            return;
-        }
-
-        if (password.length < 6) {
-            setError('Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой');
+            setStatus(null);
             return;
         }
 
         setLoading(true);
         try {
             await signInWithEmailAndPassword(auth, email, password);
+            setStatus('Амжилттай! Шилжиж байна...');
             router.push('/');
         } catch (err: any) {
             console.error(err);
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-                setError('Имэйл эсвэл нууц үг буруу байна');
-            } else if (err.code === 'auth/invalid-credential') {
+            setStatus(null);
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
                 setError('Имэйл эсвэл нууц үг буруу байна');
             } else {
                 setError('Нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу');
@@ -105,26 +63,35 @@ export default function LoginPage() {
     };
 
     const handleGoogleLogin = async () => {
-        console.log('Google Login Clicked!'); // Debug log
-        // alert('Debugging: Button clicked!'); // Visual confirmation
+        setError('');
+        setStatus('Google-ээр нэвтэрч байна...');
 
         if (!auth) {
-            console.error('Auth is missing!');
-            setError('Системийн тохиргоо дутуу байна (Firebase Init).');
+            setError('Системийн тохиргоо дутуу байна.');
             return;
         }
-
-        console.log('Auth is present, starting popup...');
 
         try {
             setLoading(true);
             const provider = new GoogleAuthProvider();
-            // Using redirect instead of popup to fix COOP issues
-            console.log('Using signInWithRedirect...');
-            await signInWithRedirect(auth, provider);
+            provider.setCustomParameters({ prompt: 'select_account' });
+
+            const result = await signInWithPopup(auth, provider);
+            if (result.user) {
+                setStatus('Амжилттай нэвтэрлээ. Шилжиж байна...');
+                router.push('/');
+            }
         } catch (err: any) {
             console.error('Google Login Error:', err);
-            setError('Google-ээр нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.');
+            setStatus(null);
+            if (err.code === 'auth/popup-blocked') {
+                setError('Цонх хаагдсан байна. Хөтөч дээрээ "Popups" зөвшөөрөөд дахин оролдоно уу.');
+            } else if (err.code === 'auth/cancelled-popup-request') {
+                setError('Нэвтрэх үйлдлийг цуцаллаа.');
+            } else {
+                setError('Google-ээр нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.');
+            }
+        } finally {
             setLoading(false);
         }
     };
@@ -182,19 +149,9 @@ export default function LoginPage() {
                         )}
 
                         {error && (
-                            <div className="space-y-4">
-                                <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 italic">
-                                    {error}
-                                </p>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="w-full text-xs"
-                                    onClick={manualCheck}
-                                >
-                                    Дахин шалгах
-                                </Button>
-                            </div>
+                            <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 italic">
+                                {error}
+                            </p>
                         )}
 
                         <Button
