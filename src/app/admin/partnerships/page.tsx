@@ -309,6 +309,39 @@ export default function PartnershipsPage() {
                     </div>
                 )}
 
+                {/* Empty State */}
+                {!isLoading && filteredPartners.length === 0 && (
+                    <Card variant="outlined" className="py-24 flex flex-col items-center justify-center border-dashed border-2 bg-slate-50/50 rounded-[48px]">
+                        <div className="w-24 h-24 bg-white rounded-[40px] shadow-2xl shadow-blue-500/10 flex items-center justify-center mb-8 relative">
+                            <Plus className="w-12 h-12 text-slate-200" />
+                            <div className="absolute -right-2 -top-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center animate-bounce">
+                                <Globe className="w-4 h-4 text-white" />
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-slate-900">Партнер одоогоор байхгүй байна</h3>
+                        <p className="text-slate-500 mt-2 mb-10 max-w-sm text-center font-medium leading-relaxed">
+                            Та партнеруудын жагсаалтыг CSV файлаас олноор нь импортлох эсвэл шинээр нэмэх боломжтой.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md px-8">
+                            <Button
+                                variant="outline"
+                                className="flex-1 bg-white h-14 rounded-2xl font-bold"
+                                onClick={() => window.location.href = '/admin/partnerships/seed'}
+                            >
+                                <Download className="w-4 h-4 mr-2" />
+                                CSV-ээс импортлох
+                            </Button>
+                            <Button
+                                className="flex-1 h-14 rounded-2xl font-bold shadow-lg shadow-blue-500/20"
+                                onClick={() => setIsAddModalOpen(true)}
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Шинэ партнер нэмэх
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+
                 {/* Automation Hub */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <Card variant="elevated" className="bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-none shadow-blue-500/30">
