@@ -27,22 +27,45 @@ export default function LoginPage() {
     React.useEffect(() => {
         const checkRedirect = async () => {
             if (!auth) return;
+
+            console.log('Component mounted, checking for redirect result...');
             try {
                 const result = await getRedirectResult(auth);
                 if (result) {
+                    console.log('SUCCESS: Redirect result found:', result.user.email);
+                    setStatus('Амжилттай нэвтэрлээ. Шилжиж байна...');
                     router.push('/');
+                } else {
+                    console.log('No redirect result (initial load or normal link).');
                 }
             } catch (err: any) {
-                console.error('Redirect Error:', err);
+                console.error('CRITICAL: Redirect Error:', err);
                 if (err.code === 'auth/cross-origin-auth-not-supported') {
                     setError('Таны хөтөч энэ нэвтрэх хэсгийг дэмжихгүй байна. Өөр хөтөч ашиглана уу.');
+                } else if (err.code === 'auth/popup-blocked') {
+                    setError('Цонх хаагдсан байна. Зөвшөөрнө үү.');
                 } else {
-                    setError('Нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.');
+                    setError(`Нэвтрэхэд алдаа гарлаа: ${err.message}`);
                 }
             }
         };
         checkRedirect();
     }, [router]);
+
+    const manualCheck = async () => {
+        if (!auth) return;
+        setStatus('Нэвтрэх явцыг дахин шалгаж байна...');
+        try {
+            const result = await getRedirectResult(auth);
+            if (result) {
+                router.push('/');
+            } else {
+                setStatus('Ямар нэг үр дүн олдсонгүй. Имэйлээр нэвтрээд үзнэ үү.');
+            }
+        } catch (err: any) {
+            setError(`Алдаа: ${err.message}`);
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -152,10 +175,26 @@ export default function LoginPage() {
                             />
                         </div>
 
-                        {error && (
-                            <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 italic">
-                                {error}
+                        {status && (
+                            <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-xl border border-blue-100 animate-pulse">
+                                {status}
                             </p>
+                        )}
+
+                        {error && (
+                            <div className="space-y-4">
+                                <p className="text-sm text-red-500 bg-red-50 p-3 rounded-xl border border-red-100 italic">
+                                    {error}
+                                </p>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full text-xs"
+                                    onClick={manualCheck}
+                                >
+                                    Дахин шалгах
+                                </Button>
+                            </div>
                         )}
 
                         <Button
