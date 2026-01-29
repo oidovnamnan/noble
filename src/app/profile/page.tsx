@@ -142,6 +142,26 @@ export default function ProfilePage() {
                     </Card>
                 </div>
 
+                {/* Admin Quick Access */}
+                {user?.role === 'admin' && (
+                    <section className="animate-fade-in">
+                        <Link href="/admin">
+                            <Button
+                                variant="primary"
+                                className="w-full h-14 rounded-2xl bg-slate-900 border-none shadow-xl shadow-slate-900/20 text-white flex items-center justify-between px-6"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                                        <Shield className="w-4 h-4 text-white" />
+                                    </div>
+                                    <span className="font-bold">Админ удирдлагын хэсэг</span>
+                                </div>
+                                <ChevronRight className="w-5 h-5 opacity-50" />
+                            </Button>
+                        </Link>
+                    </section>
+                )}
+
                 {/* Menu Items */}
                 <section className="space-y-2">
                     <h3 className="text-sm font-bold text-gray-400 ml-1 mb-3">ТОХИРГОО</h3>

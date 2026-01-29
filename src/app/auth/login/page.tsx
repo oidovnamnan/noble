@@ -22,12 +22,6 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [status, setStatus] = useState<string | null>(null);
 
-    // Simplified check
-    React.useEffect(() => {
-        if (!auth) return;
-        console.log('Login page initialized');
-    }, []);
-
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -48,7 +42,13 @@ export default function LoginPage() {
         try {
             await signInWithEmailAndPassword(auth, email, password);
             setStatus('Амжилттай! Шилжиж байна...');
-            router.push('/');
+
+            // Redirect based on email
+            if (email === 'nobleworldgate@gmail.com') {
+                router.push('/admin');
+            } else {
+                router.push('/');
+            }
         } catch (err: any) {
             console.error(err);
             setStatus(null);
@@ -79,7 +79,13 @@ export default function LoginPage() {
             const result = await signInWithPopup(auth, provider);
             if (result.user) {
                 setStatus('Амжилттай нэвтэрлээ. Шилжиж байна...');
-                router.push('/');
+
+                // Redirect admin
+                if (result.user.email === 'nobleworldgate@gmail.com') {
+                    router.push('/admin');
+                } else {
+                    router.push('/');
+                }
             }
         } catch (err: any) {
             console.error('Google Login Error:', err);

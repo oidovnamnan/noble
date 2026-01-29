@@ -66,6 +66,14 @@ export function Header() {
                                 {item.label[language]}
                             </Link>
                         ))}
+                        {user?.role === 'admin' && (
+                            <Link
+                                href="/admin"
+                                className="px-4 py-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors rounded-lg hover:bg-white/5"
+                            >
+                                {language === 'mn' ? 'АДМИН' : 'ADMIN'}
+                            </Link>
+                        )}
                     </nav>
 
                     {/* Right side */}

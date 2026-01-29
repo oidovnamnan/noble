@@ -4,8 +4,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Briefcase, FileText, MessageCircle, User } from 'lucide-react';
+import { Home, Briefcase, FileText, MessageCircle, User, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/lib/store';
 
 const navItems = [
     { href: '/', icon: Home, labelMn: 'Нүүр', labelEn: 'Home' },
@@ -21,12 +22,20 @@ interface BottomNavProps {
 
 export function BottomNav({ language = 'mn' }: BottomNavProps) {
     const pathname = usePathname();
+    const { user } = useAuthStore();
+
+    // Add admin dashboard if user is admin
+    const displayItems = [...navItems];
+    if (user?.role === 'admin') {
+        // Insert admin at index 2 (after Services) or replace something
+        displayItems.splice(2, 0, { href: '/admin', icon: LayoutDashboard, labelMn: 'Админ', labelEn: 'Admin' });
+    }
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 safe-area-bottom">
             <div className="max-w-lg mx-auto px-2">
                 <div className="flex items-center justify-around py-2">
-                    {navItems.map((item) => {
+                    {displayItems.map((item) => {
                         const isActive = pathname === item.href ||
                             (item.href !== '/' && pathname.startsWith(item.href));
                         const Icon = item.icon;
