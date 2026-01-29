@@ -33,7 +33,8 @@ const partnersData = [
 
 export async function POST(req: Request) {
     try {
-        const { action } = await req.json();
+        const body = await req.json();
+        const { action, schoolNames } = body;
 
         if (!db) {
             return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
@@ -47,7 +48,6 @@ export async function POST(req: Request) {
         }
 
         if (action === 'seed') {
-            const { schoolNames } = await req.json();
             let count = 0;
             const partnersToImport = schoolNames
                 ? partnersData.filter(p => schoolNames.includes(p.name))
