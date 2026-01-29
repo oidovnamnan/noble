@@ -16,7 +16,7 @@ export interface User {
   avatar?: string;
   role: UserRole;
   language: Language;
-  
+
   // Customer-specific fields
   passportNumber?: string;
   dateOfBirth?: Date;
@@ -26,18 +26,18 @@ export interface User {
     phone: string;
     relation: string;
   };
-  
+
   // Staff-specific fields
   department?: string;
   assignedApplicationIds?: string[];
-  
+
   // Settings
   notifications: {
     email: boolean;
     push: boolean;
     sms: boolean;
   };
-  
+
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
@@ -47,7 +47,7 @@ export interface User {
 // APPLICATION TYPES
 // ============================================
 
-export type ApplicationStatus = 
+export type ApplicationStatus =
   | 'pending'              // Шинэ бүртгэл
   | 'consultation'         // Зөвлөгөө авч байгаа
   | 'payment_pending'      // Төлбөр хүлээгдэж буй
@@ -125,7 +125,7 @@ export interface StaffNote {
 export interface Application {
   id: string;
   applicationNumber: string; // NOB-2026-0001
-  
+
   // References
   customerId: string;
   customerName: string;
@@ -135,19 +135,19 @@ export interface Application {
   serviceName: string;
   serviceNameEn: string;
   serviceCategory: ServiceCategory;
-  
+
   // Staff assignment
   assignedStaffId?: string;
   assignedStaffName?: string;
-  
+
   // Status
   status: ApplicationStatus;
   statusHistory: StatusChange[];
   progress: number; // 0-100
-  
+
   // Documents
   requiredDocuments: RequiredDocument[];
-  
+
   // Payment
   payment: {
     serviceFee: number;
@@ -160,11 +160,11 @@ export interface Application {
     status: 'pending' | 'partial' | 'paid' | 'refunded';
     transactions: PaymentTransaction[];
   };
-  
+
   // Communication
   messages: Message[];
   notes: StaffNote[];
-  
+
   // Dates
   createdAt: Date;
   updatedAt: Date;
@@ -208,24 +208,24 @@ export interface Service {
   descriptionEn: string;
   shortDescription: string;
   shortDescriptionEn: string;
-  
+
   category: ServiceCategory;
   country?: string;
   countryCode?: string;
   icon: string;
   coverImage?: string;
-  
+
   baseFee: number;
   processingTime: string;
   processingTimeEn: string;
-  
+
   requiredDocuments: DocumentRequirement[];
   steps: ServiceStep[];
   faq: FAQ[];
-  
+
   isActive: boolean;
   displayOrder: number;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -240,13 +240,13 @@ export interface DocumentType {
   nameEn: string;
   description: string;
   descriptionEn: string;
-  
+
   acceptedFormats: string[];
   maxSizeMB: number;
-  
+
   category: string;
   isActive: boolean;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -259,31 +259,31 @@ export type NewsCategory = 'announcement' | 'education' | 'travel' | 'work' | 'v
 
 export interface News {
   id: string;
-  
+
   title: string;
   titleEn: string;
   content: string;
   contentEn: string;
   excerpt: string;
   excerptEn: string;
-  
+
   coverImage?: string;
   images: string[];
-  
+
   category: NewsCategory;
   tags: string[];
-  
+
   author: {
     id: string;
     name: string;
   };
-  
+
   isPublished: boolean;
   isPinned: boolean;
   publishedAt?: Date;
-  
+
   views: number;
-  
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -362,6 +362,69 @@ export interface ChatSession {
   id: string;
   userId: string;
   messages: ChatMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ============================================
+// PARTNERSHIP TYPES
+// ============================================
+
+export type PartnershipStatus =
+  | 'pending'      // Шинэ агент болох хүсэлт илгээсэн / Ирсэн
+  | 'submitted'    // Анкет бөглөж илгээсэн
+  | 'processing'   // Материал хянагдаж байгаа / Reference check
+  | 'approved'     // Гэрээ байгуулсан / Идэвхтэй
+  | 'rejected'     // Татгалзсан
+  | 'incomplete'   // Дутуу материалтай
+  | 'dormant';     // Идэвхгүй
+
+export interface Partnership {
+  id: string;
+  name: string;
+  country: string;
+  countryCode?: string;
+  website?: string;
+  logo?: string;
+
+  // Contacts
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+
+  // Status
+  status: PartnershipStatus;
+  lastUpdateNote?: string;
+  statusHistory: {
+    status: PartnershipStatus;
+    note: string;
+    updatedAt: Date;
+    updatedBy: string;
+  }[];
+
+  // Communication
+  emails?: {
+    id: string;
+    subject: string;
+    snippet: string;
+    date: Date;
+    from: string;
+    isInbound: boolean;
+  }[];
+
+  // Automation / Documents
+  documents?: {
+    id: string;
+    name: string;
+    type: 'letterhead' | 'application' | 'contract' | 'other';
+    url: string;
+    createdAt: Date;
+  }[];
+
+  // Deadlines
+  nextActionDate?: Date;
+  nextActionType?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }

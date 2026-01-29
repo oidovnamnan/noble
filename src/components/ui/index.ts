@@ -5,3 +5,4 @@ export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 export { Badge, StatusBadge } from './Badge';
 export { Select } from './Select';
 export { Textarea } from './Textarea';
+export { Modal } from './Modal';

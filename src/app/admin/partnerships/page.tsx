@@ -20,26 +20,153 @@ import {
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
-// Mock data based on school_partnerships.csv
-const mockPartnerships = [
-    { id: 1, name: 'University of Auckland', country: 'New Zealand', contact: 'Megan / Intl. Marketing', status: 'pending', lastUpdate: 'Шинэ агент болох хүсэлт илгээсэн.' },
-    { id: 2, name: 'University of Canterbury', country: 'New Zealand', contact: 'Contact Centre', status: 'pending', lastUpdate: 'Автомат хариу ирсэн. 24 цаг.' },
-    { id: 3, name: 'Lincoln University', country: 'New Zealand', contact: 'Partnership Team', status: 'rejected', lastUpdate: 'Land-based чиглэлээр дахин хандана.' },
-    { id: 4, name: 'IPU New Zealand', country: 'New Zealand', contact: 'Jason D. Sheen', status: 'submitted', lastUpdate: 'Бүх бичиг баримтыг илгээсэн.' },
-    { id: 5, name: 'NZLC', country: 'New Zealand', contact: 'Amanda Wong', status: 'processing', lastUpdate: 'Reference Check хийгдэж байна.' },
-    { id: 6, name: 'Languages International', country: 'New Zealand', contact: 'Brett Shirreffs', status: 'incomplete', lastUpdate: 'Мэдээлэл дутуу.' },
-    { id: 7, name: 'AUT New Zealand', country: 'New Zealand', contact: 'Intl Team', status: 'pending', lastUpdate: 'Судалгаа бөглөж илгээсэн. 2-р сар.' },
-    { id: 8, name: 'Centennial College', country: 'Canada', contact: 'seasia@', status: 'submitted', lastUpdate: 'Бүх материал илгээсэн.' },
-    { id: 9, name: 'Algoma University', country: 'Canada', contact: 'Jaden Cerasuolo', status: 'submitted', lastUpdate: 'Материал мэйлээр илгээсэн.' },
-    { id: 10, name: 'University of Waikato', country: 'New Zealand', contact: 'Partnerships Team', status: 'submitted', lastUpdate: 'Материал илгээсэн.' }
-];
+import { db } from '@/lib/firebase/config';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { Partnership } from '@/types';
+import { Loader2 } from 'lucide-react';
+
+import { Modal, Input, Select, Textarea } from '@/components/ui';
+import { addDoc, Timestamp } from 'firebase/firestore';
 
 export default function PartnershipsPage() {
     const { t } = useTranslation();
+    const [partnerships, setPartnerships] = useState<Partnership[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedPartner, setSelectedPartner] = useState<Partnership | null>(null);
+    const [detailsTab, setDetailsTab] = useState<'info' | 'comms' | 'docs'>('info');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
 
-    const filteredPartners = mockPartnerships.filter(p => {
+    // New partner form state
+    const [newPartnerData, setNewPartnerData] = useState({
+        name: '',
+        country: '',
+        contactPerson: '',
+        contactEmail: '',
+        status: 'pending' as any,
+        lastUpdateNote: ''
+    });
+
+    useEffect(() => {
+        const fetchPartnerships = async () => {
+            if (!db) return;
+            try {
+                const q = query(collection(db, 'partnerships'), orderBy('createdAt', 'desc'));
+                const snapshot = await getDocs(q);
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Partnership));
+                setPartnerships(data);
+            } catch (error) {
+                console.error('Error fetching partnerships:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPartnerships();
+    }, []);
+
+    const handleAddPartner = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!db) return;
+        setIsSubmitting(true);
+        try {
+            const docRef = await addDoc(collection(db, 'partnerships'), {
+                ...newPartnerData,
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            const freshPartner = { id: docRef.id, ...newPartnerData, createdAt: new Date() } as any;
+            setPartnerships([freshPartner, ...partnerships]);
+            setIsAddModalOpen(false);
+            setNewPartnerData({
+                name: '',
+                country: '',
+                contactPerson: '',
+                contactEmail: '',
+                status: 'pending',
+                lastUpdateNote: ''
+            });
+        } catch (error) {
+            console.error('Error adding partner:', error);
+            alert('Сургууль нэмэхэд алдаа гарлаа.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleGenerateLetterhead = (partner: Partnership) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Noble Letterhead - ${partner.name}</title>
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+                    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: #f1f5f9; }
+                    .page { width: 210mm; min-height: 297mm; padding: 20mm; margin: 10mm auto; background: white; position: relative; box-sizing: border-box; }
+                    .side-bar { position: absolute; top: 0; left: 0; width: 5mm; height: 100%; background: #0f172a; }
+                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 40px; }
+                    .logo-section { display: flex; align-items: center; gap: 15px; }
+                    .company-name h1 { margin: 0; font-size: 22px; font-weight: 900; color: #0f172a; }
+                    .content { font-size: 14px; line-height: 1.6; color: #334155; min-height: 180mm; }
+                    .footer { border-top: 1px solid #e2e8f0; padding-top: 20px; display: grid; grid-template-cols: repeat(4, 1fr); gap: 10px; font-size: 9px; color: #94a3b8; }
+                    @media print { body { background: none; } .page { margin: 0; width: 100%; } }
+                </style>
+            </head>
+            <body>
+                <div class="page">
+                    <div class="side-bar"></div>
+                    <div class="header">
+                        <div class="logo-section">
+                            <div style="width: 60px; height: 60px; background: #0f172a; border-radius: 50%; display: flex; items-center; justify-content: center; color: white; font-weight: 900; font-size: 24px;">N</div>
+                            <div class="company-name">
+                                <h1>Noble World Gate</h1>
+                                <div style="font-size: 10px; color: #94a3b8;">Excellence in International Education</div>
+                            </div>
+                        </div>
+                        <div style="text-align: right; color: #94a3b8; font-size: 12px; font-weight: 700;">OFFICIAL REQUEST</div>
+                    </div>
+                    <div class="content">
+                        <p style="text-align: right;">Date: ${new Date().toLocaleDateString()}</p>
+                        <h3>To: Admissions Team, ${partner.name}</h3>
+                        <p>Subject: Partnership Inquiry for Student Recruitment</p>
+                        <br>
+                        <p>Dear ${partner.contactPerson || 'Admissions Team'},</p>
+                        <p>We are writing to express our strong interest in establishing a formal partnership with <strong>${partner.name}</strong> for recruiting students from Mongolia.</p>
+                        <p>Noble World Gate LLC is a leading education consultancy based in Ulaanbaatar, committed to providing high-quality guidance to Mongolian students seeking international education opportunities. We believe your programs align perfectly with the aspirations of our students.</p>
+                        <p>We look forward to hearing from you regarding the next steps for agent appointment.</p>
+                        <br><br>
+                        <p>Sincerely,</p>
+                        <p><strong>Narantungalag Ganbold</strong><br>CEO, Noble World Gate LLC</p>
+                    </div>
+                    <div class="footer">
+                        <div><strong>Address</strong>Suite 508, Premium Palace, UB</div>
+                        <div><strong>Contact</strong>+976 7702-7702<br>nobleworldgate@gmail.com</div>
+                        <div><strong>Online</strong>www.nobleworldgate.com</div>
+                        <div><strong>Reg</strong>7233705</div>
+                    </div>
+                </div>
+                <script>window.onload = () => { window.print(); }</script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
+
+    const handleSendEmail = (partner: Partnership) => {
+        const subject = encodeURIComponent(`Partnership Inquiry - Noble World Gate LLC`);
+        const body = encodeURIComponent(`Dear ${partner.contactPerson || 'Admissions Team'},\n\nWe are interested in becoming an authorized representative for ${partner.name}.\n\nPlease let us know the requirements.\n\nBest regards,\nNoble World Gate Team`);
+        window.open(`mailto:${partner.contactEmail || ''}?subject=${subject}&body=${body}`);
+    };
+
+    const filteredPartners = partnerships.filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.country.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = filterStatus === 'all' || p.status === filterStatus;
@@ -52,6 +179,7 @@ export default function PartnershipsPage() {
             case 'processing': return 'bg-amber-100 text-amber-700';
             case 'approved': return 'bg-emerald-100 text-emerald-700';
             case 'rejected': return 'bg-red-100 text-red-700';
+            case 'incomplete': return 'bg-purple-100 text-purple-700';
             default: return 'bg-slate-100 text-slate-700';
         }
     };
@@ -67,7 +195,7 @@ export default function PartnershipsPage() {
                     </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" size="sm" leftIcon={<Download className="w-4 h-4" />}>Export CSV</Button>
-                        <Button size="sm" leftIcon={<Plus className="w-4 h-4" />}>Add Partner</Button>
+                        <Button size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsAddModalOpen(true)}>Add Partner</Button>
                     </div>
                 </div>
 
@@ -85,7 +213,7 @@ export default function PartnershipsPage() {
                             />
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-                            {['all', 'pending', 'submitted', 'processing', 'rejected'].map((status) => (
+                            {['all', 'pending', 'submitted', 'processing', 'approved', 'rejected', 'incomplete'].map((status) => (
                                 <button
                                     key={status}
                                     onClick={() => setFilterStatus(status)}
@@ -104,48 +232,76 @@ export default function PartnershipsPage() {
                 </Card>
 
                 {/* Partnership Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredPartners.map((partner) => (
-                        <Card key={partner.id} variant="elevated" className="group hover:-translate-y-1 transition-all duration-300">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                                    <Globe className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                        <p className="text-slate-500 font-medium">Түншлэлийн мэдээллийг уншиж байна...</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredPartners.map((partner) => (
+                            <Card
+                                key={partner.id}
+                                variant="elevated"
+                                className="group hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                                onClick={() => setSelectedPartner(partner)}
+                            >
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+                                        <Globe className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
+                                    </div>
+                                    <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest", getStatusColor(partner.status))}>
+                                        {partner.status}
+                                    </div>
                                 </div>
-                                <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest", getStatusColor(partner.status))}>
-                                    {partner.status}
-                                </div>
-                            </div>
 
-                            <h3 className="text-lg font-bold text-slate-900 line-clamp-1">{partner.name}</h3>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{partner.country}</p>
+                                <h3 className="text-lg font-bold text-slate-900 line-clamp-1">{partner.name}</h3>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{partner.country}</p>
 
-                            <div className="mt-6 space-y-3">
-                                <div className="flex items-center gap-3 text-slate-500">
-                                    <User className="w-4 h-4" />
-                                    <span className="text-sm font-medium">{partner.contact}</span>
+                                <div className="mt-6 space-y-3">
+                                    <div className="flex items-center gap-3 text-slate-500">
+                                        <User className="w-4 h-4" />
+                                        <span className="text-sm font-medium">{partner.contactPerson || 'No contact person'}</span>
+                                    </div>
+                                    <div className="flex items-start gap-3 text-slate-500">
+                                        <Clock className="w-4 h-4 mt-0.5" />
+                                        <span className="text-sm font-medium line-clamp-2">{partner.lastUpdateNote || 'No recent updates'}</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-start gap-3 text-slate-500">
-                                    <Clock className="w-4 h-4 mt-0.5" />
-                                    <span className="text-sm font-medium line-clamp-2">{partner.lastUpdate}</span>
-                                </div>
-                            </div>
 
-                            <div className="mt-8 pt-4 border-t border-slate-50 flex items-center justify-between">
-                                <Button variant="ghost" size="sm" className="text-xs font-bold p-0 text-blue-600 hover:bg-transparent">
-                                    View Details
-                                </Button>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" className="w-8 h-8 rounded-lg p-0">
-                                        <FileText className="w-4 h-4" />
+                                <div className="mt-8 pt-4 border-t border-slate-50 flex items-center justify-between">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-xs font-bold p-0 text-blue-600 hover:bg-transparent"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedPartner(partner);
+                                        }}
+                                    >
+                                        View Details
                                     </Button>
-                                    <Button variant="outline" size="sm" className="w-8 h-8 rounded-lg p-0">
-                                        <ArrowUpRight className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-8 h-8 rounded-lg p-0"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleGenerateLetterhead(partner);
+                                            }}
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="w-8 h-8 rounded-lg p-0" onClick={(e) => e.stopPropagation()}>
+                                            <ArrowUpRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
+                            </Card>
+                        ))}
+                    </div>
+                )}
 
                 {/* Automation Hub */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -192,6 +348,204 @@ export default function PartnershipsPage() {
                     </Card>
                 </div>
             </div>
+
+            {/* Add Partner Modal */}
+            <Modal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                title="Шинэ түншлэл бүртгэх"
+            >
+                <form onSubmit={handleAddPartner} className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input
+                            label="Сургуулийн нэр"
+                            placeholder="University of..."
+                            value={newPartnerData.name}
+                            onChange={e => setNewPartnerData({ ...newPartnerData, name: e.target.value })}
+                            required
+                        />
+                        <Input
+                            label="Улс"
+                            placeholder="New Zealand"
+                            value={newPartnerData.country}
+                            onChange={e => setNewPartnerData({ ...newPartnerData, country: e.target.value })}
+                            required
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input
+                            label="Харилцагч ажилтан"
+                            placeholder="Name..."
+                            value={newPartnerData.contactPerson}
+                            onChange={e => setNewPartnerData({ ...newPartnerData, contactPerson: e.target.value })}
+                        />
+                        <Input
+                            label="Имэйл"
+                            type="email"
+                            placeholder="admissions@..."
+                            value={newPartnerData.contactEmail}
+                            onChange={e => setNewPartnerData({ ...newPartnerData, contactEmail: e.target.value })}
+                        />
+                    </div>
+                    <Select
+                        label="Одоогийн төлөв"
+                        options={[
+                            { value: 'pending', label: 'Хариу хүлээж буй' },
+                            { value: 'submitted', label: 'Өргөдөл илгээсэн' },
+                            { value: 'processing', label: 'Хянагдаж байгаа' },
+                            { value: 'incomplete', label: 'Мэдээлэл дутуу' },
+                        ]}
+                        value={newPartnerData.status}
+                        onChange={val => setNewPartnerData({ ...newPartnerData, status: val })}
+                    />
+                    <Textarea
+                        label="Сүүлийн явц / Тайлбар"
+                        placeholder="Ямар шатанд байгаа тухай..."
+                        value={newPartnerData.lastUpdateNote}
+                        onChange={e => setNewPartnerData({ ...newPartnerData, lastUpdateNote: e.target.value })}
+                    />
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button variant="ghost" onClick={() => setIsAddModalOpen(false)}>Цуцлах</Button>
+                        <Button type="submit" isLoading={isSubmitting}>Бүртгэх</Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Partnership Details Modal */}
+            <Modal
+                isOpen={!!selectedPartner}
+                onClose={() => setSelectedPartner(null)}
+                title={selectedPartner?.name || 'Partnership Details'}
+                maxWidth="max-w-4xl"
+            >
+                {selectedPartner && (
+                    <div className="space-y-8">
+                        {/* Tabs Navigation */}
+                        <div className="flex border-b border-slate-100">
+                            {['info', 'comms', 'docs'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setDetailsTab(tab as any)}
+                                    className={cn(
+                                        "px-6 py-4 text-sm font-bold uppercase tracking-wider transition-all border-b-2",
+                                        detailsTab === tab
+                                            ? "border-blue-600 text-blue-600"
+                                            : "border-transparent text-slate-400 hover:text-slate-600"
+                                    )}
+                                >
+                                    {tab === 'info' ? 'Мэдээлэл' : tab === 'comms' ? 'Communication Hub' : 'Documents'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Tab Content */}
+                        <div className="min-h-[400px]">
+                            {detailsTab === 'info' && (
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <section>
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Сургуулийн мэдээлэл</h4>
+                                            <div className="bg-slate-50 rounded-2xl p-6 space-y-4">
+                                                <div>
+                                                    <p className="text-xs text-slate-400 mb-1">Нэр</p>
+                                                    <p className="font-bold text-slate-900">{selectedPartner.name}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-400 mb-1">Улс</p>
+                                                    <p className="font-bold text-slate-900">{selectedPartner.country}</p>
+                                                </div>
+                                            </div>
+                                        </section>
+                                        <section>
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Холбоо барих</h4>
+                                            <div className="bg-slate-50 rounded-2xl p-6 space-y-4">
+                                                <div>
+                                                    <p className="text-xs text-slate-400 mb-1">Ажилтан</p>
+                                                    <p className="font-bold text-slate-900">{selectedPartner.contactPerson || '-'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-400 mb-1">Имэйл</p>
+                                                    <p className="font-bold text-blue-600">{selectedPartner.contactEmail || '-'}</p>
+                                                </div>
+                                            </div>
+                                        </section>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <section>
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Статус</h4>
+                                            <div className="bg-slate-50 rounded-2xl p-6">
+                                                <Badge className={cn("mb-4", getStatusColor(selectedPartner.status))}>
+                                                    {selectedPartner.status.toUpperCase()}
+                                                </Badge>
+                                                <p className="text-sm font-medium text-slate-600 leading-relaxed italic">
+                                                    "{selectedPartner.lastUpdateNote}"
+                                                </p>
+                                            </div>
+                                        </section>
+                                        <div className="flex flex-col gap-3">
+                                            <Button
+                                                className="w-full"
+                                                leftIcon={<Download className="w-4 h-4" />}
+                                                onClick={() => handleGenerateLetterhead(selectedPartner)}
+                                            >
+                                                Generate Letterhead
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full"
+                                                leftIcon={<Globe className="w-4 h-4" />}
+                                                onClick={() => window.open(selectedPartner.website || '#', '_blank')}
+                                            >
+                                                Visit Website
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {detailsTab === 'comms' && (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gmail Interaction</h4>
+                                        <Button size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => handleSendEmail(selectedPartner)}>New Email</Button>
+                                    </div>
+                                    <div className="bg-slate-900 rounded-[32px] p-8 text-center space-y-4 border border-slate-800 shadow-2xl">
+                                        <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto">
+                                            <Globe className="w-8 h-8 text-blue-400 animate-pulse" />
+                                        </div>
+                                        <h5 className="text-white font-bold text-lg">AI Email Hub</h5>
+                                        <p className="text-slate-400 text-sm max-w-xs mx-auto">Connecting to GMAIL to fetch latest conversations with ${selectedPartner.name}...</p>
+                                        <div className="flex justify-center gap-2">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {detailsTab === 'docs' && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Card variant="outlined" className="p-6 border-dashed border-2 flex flex-col items-center justify-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer group">
+                                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                                            <FileText className="w-6 h-6 text-slate-400 group-hover:text-blue-600" />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-600">Company Letterhead</p>
+                                        <Button variant="ghost" size="sm" onClick={() => handleGenerateLetterhead(selectedPartner)}>Generate New</Button>
+                                    </Card>
+                                    <Card variant="outlined" className="p-6 border-dashed border-2 flex flex-col items-center justify-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer group">
+                                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                                            <Plus className="w-6 h-6 text-slate-400 group-hover:text-amber-600" />
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-600">Upload Document</p>
+                                        <Button variant="ghost" size="sm">Select File</Button>
+                                    </Card>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </AdminLayout>
     );
 }

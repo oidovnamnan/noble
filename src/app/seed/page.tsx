@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase/config';
 import { collection, addDoc, Timestamp, getDocs, deleteDoc, query } from 'firebase/firestore';
 import { Loader2, CheckCircle, Database, Trash2, ArrowRight } from 'lucide-react';
-import { MOCK_SERVICES, MOCK_NEWS } from '@/lib/mock-data';
+import { MOCK_SERVICES, MOCK_NEWS, MOCK_PARTNERSHIPS } from '@/lib/mock-data';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
@@ -66,6 +66,18 @@ export default function SeedPage() {
                     updatedAt: Timestamp.now()
                 });
                 setLog(prev => [...prev, `Added News: ${item.title.en}`]);
+            }
+
+            // Seed Partnerships
+            setLog(prev => [...prev, 'Starting partnerships seeding...']);
+            await clearCollection('partnerships');
+            for (const item of MOCK_PARTNERSHIPS) {
+                await addDoc(collection(db, 'partnerships'), {
+                    ...item,
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now()
+                });
+                setLog(prev => [...prev, `Added Partnership: ${item.name}`]);
             }
 
             setStatus('success');
