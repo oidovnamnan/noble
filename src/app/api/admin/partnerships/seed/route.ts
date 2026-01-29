@@ -33,10 +33,13 @@ const partnersData = [
 
 export async function POST(req: Request) {
     try {
+        console.log('[SEED API] Request received');
         const body = await req.json();
         const { action, schoolNames } = body;
+        console.log(`[SEED API] Action: ${action}, Schools: ${schoolNames?.length || 'all'}`);
 
         if (!db) {
+            console.error('[SEED API] Database NOT initialized');
             return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
         }
 
@@ -53,7 +56,10 @@ export async function POST(req: Request) {
                 ? partnersData.filter(p => schoolNames.includes(p.name))
                 : partnersData;
 
+            console.log(`[SEED API] Starting import for ${partnersToImport.length} records`);
+
             for (const partner of partnersToImport) {
+                console.log(`[SEED API] Writing: ${partner.name}`);
                 await addDoc(collection(db!, 'partnerships'), {
                     ...partner,
                     createdAt: Timestamp.now(),
@@ -67,6 +73,7 @@ export async function POST(req: Request) {
                 });
                 count++;
             }
+            console.log(`[SEED API] Successfully seeded ${count} partners`);
             return NextResponse.json({ message: `Successfully seeded ${count} partners` });
         }
 

@@ -27,19 +27,13 @@ if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key') {
             app = getApps()[0];
         }
 
-        auth = getAuth(app);
+        auth = getAuth(app!);
 
-        // Use getFirestore if already initialized, otherwise initialize with settings
-        if (typeof window !== 'undefined') {
-            // Client-side: Force memory cache and long polling for reliability
-            db = initializeFirestore(app!, {
-                experimentalForceLongPolling: true,
-                localCache: { _kind: 'memory' } as any
-            });
-        } else {
-            // Server-side: Use standard settings for efficiency
-            db = getFirestore(app!);
-        }
+        // Use aggressive settings for BOTH client and server to bypass network issues
+        db = initializeFirestore(app!, {
+            experimentalForceLongPolling: true,
+            localCache: (typeof window !== 'undefined') ? { _kind: 'memory' } as any : undefined
+        });
 
         storage = getStorage(app!);
         console.log(`Firebase Initialized (${typeof window !== 'undefined' ? 'Client' : 'Server'})`, {
