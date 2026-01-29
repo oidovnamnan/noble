@@ -60,47 +60,27 @@ export default function SeedPartnerships() {
     };
 
     const seedData = async () => {
-        if (!db) {
-            setStatus('Error: Database not initialized.');
-            return;
-        }
         setLoading(true);
-        setStatus('Connecting and Seeding...');
+        setStatus('Connecting to Server and Seeding (Server-side)...');
         setProgress(0);
 
         try {
-            let count = 0;
-            for (const partner of partnersData) {
-                console.log(`[SEED] Starting import for: ${partner.name}`);
-                setStatus(`Importing: ${partner.name}...`);
+            const response = await fetch('/api/admin/partnerships/seed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'seed' })
+            });
 
-                // Create a promise that rejects after 15 seconds
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Connection timeout - record took too long')), 15000)
-                );
+            const result = await response.json();
 
-                const uploadPromise = addDoc(collection(db, 'partnerships'), {
-                    ...partner,
-                    createdAt: Timestamp.now(),
-                    updatedAt: Timestamp.now(),
-                    statusHistory: [{
-                        status: partner.status,
-                        note: 'Initial seed data import',
-                        updatedAt: Timestamp.now(),
-                        updatedBy: 'System'
-                    }]
-                });
-
-                // Race the upload against the timeout
-                await Promise.race([uploadPromise, timeoutPromise]);
-
-                console.log(`[SEED] Successfully imported: ${partner.name}`);
-                count++;
-                setProgress(Math.round((count / partnersData.length) * 100));
+            if (!response.ok) {
+                throw new Error(result.error || 'Server error during seeding');
             }
-            setStatus('Success! All 26 partners imported.');
+
+            setProgress(100);
+            setStatus(`Success! ${result.message}`);
         } catch (error: any) {
-            console.error('[SEED] Error during import:', error);
+            console.error('[SEED] Error during server-side import:', error);
             setStatus(`Error: ${error.message || 'Unknown error'}. Check console.`);
         } finally {
             setLoading(false);
@@ -108,14 +88,22 @@ export default function SeedPartnerships() {
     };
 
     const clearData = async () => {
-        if (!db) return;
         if (!confirm('Are you sure? This will delete all partnerships.')) return;
         setLoading(true);
-        setStatus('Clearing data...');
+        setStatus('Clearing data (Server-side)...');
         try {
-            const snap = await getDocs(collection(db!, 'partnerships'));
-            const deletions = snap.docs.map(d => deleteDoc(doc(db!, 'partnerships', d.id)));
-            await Promise.all(deletions);
+            const response = await fetch('/api/admin/partnerships/seed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'clear' })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Server error during clear');
+            }
+
             setStatus('Database cleared!');
             setProgress(0);
         } catch (error: any) {

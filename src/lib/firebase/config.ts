@@ -19,34 +19,34 @@ let auth: Auth | undefined;
 let db: Firestore | undefined;
 let storage: FirebaseStorage | undefined;
 
-// Safety check: only initialize if API key is present
-if (typeof window !== 'undefined') {
-    if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key') {
-        try {
-            if (!getApps().length) {
-                app = initializeApp(firebaseConfig);
-            } else {
-                app = getApps()[0];
-            }
-            auth = getAuth(app);
-
-            // Aggressive Firestore initialization for unstable network environments
-            db = initializeFirestore(app!, {
-                experimentalForceLongPolling: true,
-                // Using memory-only cache prevents issues with corrupted IndexedDB in local environments
-                localCache: { _kind: 'memory' } as any
-            });
-
-            storage = getStorage(app!);
-            console.log('Firebase Services Initialized (Memory Cache, Long Polling)', {
-                projectId: firebaseConfig.projectId
-            });
-        } catch (error) {
-            console.error('Firebase initialization error:', error);
+// Initialize Firebase
+if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key') {
+    try {
+        if (!getApps().length) {
+            app = initializeApp(firebaseConfig);
+        } else {
+            app = getApps()[0];
         }
-    } else {
-        console.warn('Firebase API key is missing or placeholder. API Key starts with:', firebaseConfig.apiKey?.substring(0, 5));
+        auth = getAuth(app);
+
+        // Aggressive Firestore initialization for unstable network environments
+        // Works on both client and server (Next.js Edge/Node)
+        db = initializeFirestore(app!, {
+            experimentalForceLongPolling: true,
+            // Using memory-only cache prevents issues with corrupted IndexedDB 
+            localCache: (typeof window !== 'undefined') ? { _kind: 'memory' } as any : undefined
+        });
+
+        storage = getStorage(app!);
+        console.log('Firebase Services Initialized', {
+            projectId: firebaseConfig.projectId,
+            context: typeof window !== 'undefined' ? 'client' : 'server'
+        });
+    } catch (error) {
+        console.error('Firebase initialization error:', error);
     }
+} else {
+    console.warn('Firebase API key is missing or placeholder. API Key starts with:', firebaseConfig.apiKey?.substring(0, 5));
 }
 
 export { app, auth, db, storage };
