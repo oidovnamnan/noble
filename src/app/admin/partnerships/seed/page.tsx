@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, Button } from '@/components/ui';
 import { db } from '@/lib/firebase/config';
@@ -41,14 +41,37 @@ export default function SeedPartnerships() {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
+    const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
+
+    useEffect(() => {
+        // Default to all selected
+        setSelectedSchools(partnersData.map(p => p.name));
+    }, []);
+
+    const toggleSchool = (name: string) => {
+        setSelectedSchools(prev =>
+            prev.includes(name)
+                ? prev.filter(n => n !== name)
+                : [...prev, name]
+        );
+    };
+
+    const toggleAll = () => {
+        if (selectedSchools.length === partnersData.length) {
+            setSelectedSchools([]);
+        } else {
+            setSelectedSchools(partnersData.map(p => p.name));
+        }
+    };
 
     const handleFixConnection = async () => {
-        if (!db) return;
         setLoading(true);
         setStatus('Fixing connection (Resetting Firebase)...');
         try {
-            await terminate(db);
-            await clearIndexedDbPersistence(db);
+            if (db) {
+                await terminate(db);
+                await clearIndexedDbPersistence(db);
+            }
             setStatus('Connection cache cleared. Please refresh the page.');
             window.location.reload();
         } catch (error) {
@@ -60,15 +83,20 @@ export default function SeedPartnerships() {
     };
 
     const seedData = async () => {
+        if (selectedSchools.length === 0) {
+            setStatus('Error: Please select at least one school.');
+            return;
+        }
+
         setLoading(true);
-        setStatus('Connecting to Server and Seeding (Server-side)...');
+        setStatus(`Connecting to Server and Seeding ${selectedSchools.length} partners...`);
         setProgress(0);
 
         try {
             const response = await fetch('/api/admin/partnerships/seed', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'seed' })
+                body: JSON.stringify({ action: 'seed', schoolNames: selectedSchools })
             });
 
             const result = await response.json();
@@ -114,9 +142,11 @@ export default function SeedPartnerships() {
         }
     };
 
+    const allSelected = selectedSchools.length === partnersData.length;
+
     return (
         <AdminLayout>
-            <div className="max-w-2xl mx-auto py-12">
+            <div className="max-w-3xl mx-auto py-12">
                 <Card className="p-8 space-y-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 text-blue-600">
@@ -130,16 +160,80 @@ export default function SeedPartnerships() {
                     </div>
 
                     <p className="text-slate-500 font-medium">
-                        This tool will import {partnersData.length} school records. If it gets stuck, use "Fix Connection" or check if you are offline.
+                        Select the schools you want to import into the database. Use this tool to populate your system with initial partner data.
                     </p>
 
                     <div className="space-y-4">
+                        <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onChange={toggleAll}
+                                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <span className="text-sm font-bold text-slate-700">Select All ({partnersData.length})</span>
+                            </div>
+                            <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">{selectedSchools.length} Selected</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            {partnersData.map((p, i) => {
+                                const isSelected = selectedSchools.includes(p.name);
+                                return (
+                                    <div
+                                        key={i}
+                                        onClick={() => toggleSchool(p.name)}
+                                        className={cn(
+                                            "flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group",
+                                            isSelected
+                                                ? "bg-blue-50/50 border-blue-100 ring-1 ring-blue-100"
+                                                : "bg-white border-slate-100 hover:border-slate-200"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                readOnly
+                                                className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <div className="text-left">
+                                                <p className="text-sm font-bold text-slate-900 leading-none">{p.name}</p>
+                                                <p className="text-[10px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{p.country}</p>
+                                            </div>
+                                        </div>
+                                        <div className={cn(
+                                            "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border",
+                                            p.status === 'processing' ? "bg-amber-50 text-amber-600 border-amber-100" :
+                                                p.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                    p.status === 'rejected' ? "bg-red-50 text-red-600 border-red-100" :
+                                                        "bg-slate-50 text-slate-600 border-slate-100"
+                                        )}>
+                                            {p.status}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4">
                         <div className="flex gap-4">
-                            <Button onClick={seedData} disabled={loading} className="flex-1 h-14 rounded-2xl shadow-lg shadow-blue-500/20">
+                            <Button
+                                onClick={seedData}
+                                disabled={loading || selectedSchools.length === 0}
+                                className="flex-1 h-14 rounded-2xl shadow-lg shadow-blue-500/20 font-bold"
+                            >
                                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
-                                Start Import
+                                Import {selectedSchools.length} Selected
                             </Button>
-                            <Button variant="outline" onClick={clearData} disabled={loading} className="h-14 px-6 rounded-2xl text-red-500 border-red-100 hover:bg-red-50">
+                            <Button
+                                variant="outline"
+                                onClick={clearData}
+                                disabled={loading}
+                                className="h-14 px-6 rounded-2xl text-red-500 border-red-100 hover:bg-red-50"
+                            >
                                 <Trash2 className="w-5 h-5" />
                             </Button>
                         </div>
@@ -167,18 +261,6 @@ export default function SeedPartnerships() {
                             <p className="text-sm font-bold">{status}</p>
                         </div>
                     )}
-
-                    <div className="pt-6 border-t border-slate-100">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Schools to be imported</h3>
-                        <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2">
-                            {partnersData.map((p, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-700">
-                                    <span>{p.name}</span>
-                                    <span className="text-[10px] bg-white px-2 py-0.5 rounded-md border border-slate-100 whitespace-nowrap">{p.country}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </Card>
             </div>
         </AdminLayout>

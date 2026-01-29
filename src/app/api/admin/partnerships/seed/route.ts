@@ -47,8 +47,13 @@ export async function POST(req: Request) {
         }
 
         if (action === 'seed') {
+            const { schoolNames } = await req.json();
             let count = 0;
-            for (const partner of partnersData) {
+            const partnersToImport = schoolNames
+                ? partnersData.filter(p => schoolNames.includes(p.name))
+                : partnersData;
+
+            for (const partner of partnersToImport) {
                 await addDoc(collection(db!, 'partnerships'), {
                     ...partner,
                     createdAt: Timestamp.now(),

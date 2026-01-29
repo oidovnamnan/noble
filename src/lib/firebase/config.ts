@@ -19,7 +19,6 @@ let auth: Auth | undefined;
 let db: Firestore | undefined;
 let storage: FirebaseStorage | undefined;
 
-// Initialize Firebase
 if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key') {
     try {
         if (!getApps().length) {
@@ -27,26 +26,30 @@ if (firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key') {
         } else {
             app = getApps()[0];
         }
+
         auth = getAuth(app);
 
-        // Aggressive Firestore initialization for unstable network environments
-        // Works on both client and server (Next.js Edge/Node)
-        db = initializeFirestore(app!, {
-            experimentalForceLongPolling: true,
-            // Using memory-only cache prevents issues with corrupted IndexedDB 
-            localCache: (typeof window !== 'undefined') ? { _kind: 'memory' } as any : undefined
-        });
+        // Use getFirestore if already initialized, otherwise initialize with settings
+        if (typeof window !== 'undefined') {
+            // Client-side: Force memory cache and long polling for reliability
+            db = initializeFirestore(app!, {
+                experimentalForceLongPolling: true,
+                localCache: { _kind: 'memory' } as any
+            });
+        } else {
+            // Server-side: Use standard settings for efficiency
+            db = getFirestore(app!);
+        }
 
         storage = getStorage(app!);
-        console.log('Firebase Services Initialized', {
-            projectId: firebaseConfig.projectId,
-            context: typeof window !== 'undefined' ? 'client' : 'server'
+        console.log(`Firebase Initialized (${typeof window !== 'undefined' ? 'Client' : 'Server'})`, {
+            projectId: firebaseConfig.projectId
         });
     } catch (error) {
         console.error('Firebase initialization error:', error);
     }
 } else {
-    console.warn('Firebase API key is missing or placeholder. API Key starts with:', firebaseConfig.apiKey?.substring(0, 5));
+    console.warn('Firebase API key is missing or placeholder in environment variables.');
 }
 
 export { app, auth, db, storage };
