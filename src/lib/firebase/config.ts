@@ -30,14 +30,17 @@ if (typeof window !== 'undefined') {
             }
             auth = getAuth(app);
 
-            // Standard Firestore initialization with a more robust config
-            // We force long polling because of reported connection issues in certain environments
+            // Aggressive Firestore initialization for unstable network environments
             db = initializeFirestore(app!, {
                 experimentalForceLongPolling: true,
+                // Using memory-only cache prevents issues with corrupted IndexedDB in local environments
+                localCache: { _kind: 'memory' } as any
             });
 
             storage = getStorage(app!);
-            console.log('Firebase Services Initialized (Forced Long Polling)');
+            console.log('Firebase Services Initialized (Memory Cache, Long Polling)', {
+                projectId: firebaseConfig.projectId
+            });
         } catch (error) {
             console.error('Firebase initialization error:', error);
         }

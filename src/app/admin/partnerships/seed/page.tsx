@@ -71,8 +71,15 @@ export default function SeedPartnerships() {
         try {
             let count = 0;
             for (const partner of partnersData) {
+                console.log(`[SEED] Starting import for: ${partner.name}`);
                 setStatus(`Importing: ${partner.name}...`);
-                const docRef = await addDoc(collection(db, 'partnerships'), {
+
+                // Create a promise that rejects after 15 seconds
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Connection timeout - record took too long')), 15000)
+                );
+
+                const uploadPromise = addDoc(collection(db, 'partnerships'), {
                     ...partner,
                     createdAt: Timestamp.now(),
                     updatedAt: Timestamp.now(),
@@ -83,12 +90,17 @@ export default function SeedPartnerships() {
                         updatedBy: 'System'
                     }]
                 });
+
+                // Race the upload against the timeout
+                await Promise.race([uploadPromise, timeoutPromise]);
+
+                console.log(`[SEED] Successfully imported: ${partner.name}`);
                 count++;
                 setProgress(Math.round((count / partnersData.length) * 100));
             }
             setStatus('Success! All 26 partners imported.');
         } catch (error: any) {
-            console.error(error);
+            console.error('[SEED] Error during import:', error);
             setStatus(`Error: ${error.message || 'Unknown error'}. Check console.`);
         } finally {
             setLoading(false);
