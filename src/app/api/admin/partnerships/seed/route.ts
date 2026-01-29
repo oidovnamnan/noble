@@ -39,50 +39,96 @@ export async function POST(req: Request) {
         console.log(`[SEED API] Action: ${action}, Schools: ${schoolNames?.length || 'all'}`);
 
         if (!db) {
-            console.error('[SEED API] Database NOT initialized');
-            return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
+            console.error('[SEED API] Database NOT initialized. Config check:', {
+                hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+            });
+            return NextResponse.json({
+                error: 'Database not initialized. Check server environment variables.'
+            }, { status: 500 });
         }
 
         if (action === 'clear') {
-            const snap = await getDocs(collection(db!, 'partnerships'));
-            const deletions = snap.docs.map(d => deleteDoc(doc(db!, 'partnerships', d.id)));
-            await Promise.all(deletions);
-            return NextResponse.json({ message: 'Database cleared' });
+            const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+            const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+            const listUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/partnerships?key=${apiKey}`;
+            const listRes = await fetch(listUrl);
+            const data = await listRes.json();
+
+            if (data.documents) {
+                console.log(`[SEED API REST] Clearing ${data.documents.length} documents`);
+                for (const doc of data.documents) {
+                    const deleteUrl = `https://firestore.googleapis.com/v1/${doc.name}?key=${apiKey}`;
+                    await fetch(deleteUrl, { method: 'DELETE' });
+                }
+            }
+
+            return NextResponse.json({ message: 'Database cleared (via REST)' });
         }
 
         if (action === 'seed') {
+            const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+            const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+            if (!apiKey || !projectId) {
+                return NextResponse.json({ error: 'Missing Firebase configuration on server.' }, { status: 500 });
+            }
+
             let count = 0;
             const partnersToImport = schoolNames
                 ? partnersData.filter(p => schoolNames.includes(p.name))
                 : partnersData;
 
-            console.log(`[SEED API] Starting import for ${partnersToImport.length} records`);
+            console.log(`[SEED API REST] Starting import for ${partnersToImport.length} records`);
 
             for (const partner of partnersToImport) {
-                console.log(`[SEED API] [${count + 1}/${partnersToImport.length}] Writing: ${partner.name}`);
+                console.log(`[SEED API REST] [${count + 1}/${partnersToImport.length}] Writing: ${partner.name}`);
 
-                // Add a timeout for each individual write to prevent global hang
-                const recordTimeout = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error(`Timeout writing ${partner.name}`)), 8000)
-                );
+                const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/partnerships?key=${apiKey}`;
 
-                const writeOp = addDoc(collection(db!, 'partnerships'), {
-                    ...partner,
-                    createdAt: Timestamp.now(),
-                    updatedAt: Timestamp.now(),
-                    statusHistory: [{
-                        status: partner.status,
-                        note: 'Initial seed data import (Server-side)',
-                        updatedAt: Timestamp.now(),
-                        updatedBy: 'System'
-                    }]
+                // Map all common fields to Firestore REST string format
+                const fields: any = {};
+                Object.entries(partner).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null) {
+                        fields[key] = { stringValue: String(value) };
+                    }
                 });
 
-                await Promise.race([writeOp, recordTimeout]);
+                // Add Timestamps and Complex types
+                fields.createdAt = { timestampValue: new Date().toISOString() };
+                fields.updatedAt = { timestampValue: new Date().toISOString() };
+                fields.statusHistory = {
+                    arrayValue: {
+                        values: [{
+                            mapValue: {
+                                fields: {
+                                    status: { stringValue: partner.status },
+                                    note: { stringValue: 'Initial seed data import (via REST)' },
+                                    updatedAt: { timestampValue: new Date().toISOString() },
+                                    updatedBy: { stringValue: 'System' }
+                                }
+                            }
+                        }]
+                    }
+                };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fields })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[SEED API REST] Error for ${partner.name}:`, errorText);
+                    throw new Error(`REST Error: ${response.status} - ${partner.name}`);
+                }
+
                 count++;
             }
-            console.log(`[SEED API] Successfully seeded ${count} partners`);
-            return NextResponse.json({ message: `Successfully seeded ${count} partners` });
+            console.log(`[SEED API REST] Successfully seeded ${count} partners`);
+            return NextResponse.json({ message: `Successfully seeded ${count} partners (via REST)` });
         }
 
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
