@@ -17,6 +17,7 @@ import {
     Download,
     RefreshCw,
     Bot,
+    Mail,
     PanelLeftClose,
     PanelRightClose
 } from 'lucide-react';
@@ -43,7 +44,9 @@ export default function PartnershipsPage() {
     const [filterStatus, setFilterStatus] = useState('all');
     const [aiEmailText, setAiEmailText] = useState('');
     const [isAiLoading, setIsAiLoading] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+    const [isGmailConnected, setIsGmailConnected] = useState(false);
 
     // New partner form state
     const [newPartnerData, setNewPartnerData] = useState({
@@ -54,6 +57,43 @@ export default function PartnershipsPage() {
         status: 'pending' as any,
         lastUpdateNote: ''
     });
+
+    useEffect(() => {
+        // Check if gmail just connected from URL
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('gmail') === 'connected') {
+            setIsGmailConnected(true);
+            alert('Gmail амжилттай холбогдлоо!');
+        }
+    }, []);
+
+    const handleConnectGmail = () => {
+        window.location.href = '/api/admin/gmail/auth';
+    };
+
+    const handleSyncAll = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/admin/gmail/sync', {
+                method: 'POST',
+                body: JSON.stringify({
+                    partners: partnerships.map(p => ({ id: p.id, name: p.name, contactEmail: p.contactEmail }))
+                })
+            });
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+                alert(`${data.results.length} сургуулийн мэдээлэл шинэчлэгдлээ!`);
+                // Fast reload or update local state
+                window.location.reload();
+            } else {
+                alert('Шинэ имэйл олдсонгүй.');
+            }
+        } catch (e) {
+            alert('Sync failed. Please connect Gmail again.');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     useEffect(() => {
         const fetchPartnerships = async () => {
@@ -218,7 +258,24 @@ export default function PartnershipsPage() {
                         <p className="text-slate-500 text-sm mt-1 font-medium">Manage international school partnerships and applications</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" leftIcon={<Download className="w-4 h-4" />}>Export CSV</Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            leftIcon={<Mail className={cn("w-4 h-4", isSyncing && "animate-spin")} />}
+                            onClick={handleConnectGmail}
+                        >
+                            {isGmailConnected ? 'Gmail Connected' : 'Connect Gmail'}
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={isSyncing}
+                            leftIcon={<RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />}
+                            onClick={handleSyncAll}
+                        >
+                            Sync all with AI
+                        </Button>
+                        <Button variant="outline" size="sm" leftIcon={<Download className={cn("w-4 h-4")} />}>Export CSV</Button>
                         <Button size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsAddModalOpen(true)}>Add Partner</Button>
                     </div>
                 </div>
@@ -237,18 +294,28 @@ export default function PartnershipsPage() {
                             />
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-                            {['all', 'prospect', 'contacted', 'interested', 'applying', 'submitted', 'under_review', 'active', 'rejected'].map((status) => (
+                            {[
+                                { val: 'all', label: 'Бүгд' },
+                                { val: 'prospect', label: 'Ирээдүйтэй' },
+                                { val: 'contacted', label: 'Холбоо барьсан' },
+                                { val: 'interested', label: 'Сонирхсон' },
+                                { val: 'applying', label: 'Материал бүрдүүлэлт' },
+                                { val: 'submitted', label: 'Илгээсэн' },
+                                { val: 'under_review', label: 'Хянагдаж буй' },
+                                { val: 'active', label: 'Баталгаажсан' },
+                                { val: 'rejected', label: 'Татгалзсан' },
+                            ].map((status) => (
                                 <button
-                                    key={status}
-                                    onClick={() => setFilterStatus(status)}
+                                    key={status.val}
+                                    onClick={() => setFilterStatus(status.val)}
                                     className={cn(
                                         "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap",
-                                        filterStatus === status
+                                        filterStatus === status.val
                                             ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                                             : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50"
                                     )}
                                 >
-                                    {status}
+                                    {status.label}
                                 </button>
                             ))}
                         </div>
@@ -275,7 +342,20 @@ export default function PartnershipsPage() {
                                         <Globe className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
                                     </div>
                                     <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest", getStatusColor(partner.status))}>
-                                        {partner.status}
+                                        {{
+                                            prospect: 'Ирээдүйтэй',
+                                            contacted: 'Холбогдсон',
+                                            interested: 'Сонирхсон',
+                                            applying: 'Бөглөж буй',
+                                            submitted: 'Илгээсэн',
+                                            under_review: 'Хянагдаж буй',
+                                            negotiation: 'Гэрээ ярилцаж буй',
+                                            contract_sent: 'Гэрээ илгээсэн',
+                                            active: 'Идэвхтэй',
+                                            rejected: 'Татгалзсан',
+                                            dormant: 'Идэвхгүй',
+                                            on_hold: 'Хүлээгдэж буй'
+                                        }[partner.status as string] || partner.status}
                                     </div>
                                 </div>
 
@@ -630,38 +710,52 @@ export default function PartnershipsPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4">
-                                                <p className="text-[10px] font-black text-emerald-600 uppercase mb-2">Proposed Reply</p>
-                                                <p className="text-xs text-slate-700 leading-relaxed font-serif italic mb-4">
-                                                    "{aiAnalysis.proposedReply}"
-                                                </p>
-                                                <div className="flex gap-2">
-                                                    <Button size="sm" variant="outline" className="flex-1 bg-white" onClick={() => navigator.clipboard.writeText(aiAnalysis.proposedReply)}>
-                                                        Copy Reply
-                                                    </Button>
-                                                    <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 border-none" onClick={async () => {
-                                                        if (!db) return;
-                                                        await updateDoc(doc(db, 'partnerships', selectedPartner.id), {
-                                                            status: aiAnalysis.status.toLowerCase(),
-                                                            lastUpdateNote: aiAnalysis.summary,
-                                                            updatedAt: Timestamp.now()
-                                                        });
-                                                        alert('Partner updated successfully!');
-                                                        setAiAnalysis(null);
-                                                        setAiEmailText('');
-                                                    }}>
-                                                        Apply Updates
-                                                    </Button>
-                                                </div>
-                                            </div>
-
                                             <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
                                                 <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                                     <Bot className="w-4 h-4 text-amber-600" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black text-amber-700 uppercase">Next Step</p>
+                                                    <p className="text-[10px] font-black text-amber-700 uppercase">Дараагийн алхам</p>
                                                     <p className="text-xs text-amber-800 font-bold">{aiAnalysis.nextAction}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4">
+                                                <p className="text-[10px] font-black text-emerald-600 uppercase mb-2">Зөвлөсөн хариу (English)</p>
+                                                <div className="bg-white/50 rounded-xl p-4 mb-4">
+                                                    <p className="text-xs text-slate-700 leading-relaxed font-serif italic">
+                                                        "{aiAnalysis.proposedReply}"
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="outline" className="flex-1 bg-white" onClick={() => {
+                                                        navigator.clipboard.writeText(aiAnalysis.proposedReply);
+                                                        alert('Copy success!');
+                                                    }}>
+                                                        Text хуулах
+                                                    </Button>
+                                                    <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 border-none" onClick={async () => {
+                                                        if (!db || !selectedPartner) return;
+                                                        const updates = {
+                                                            status: aiAnalysis.status.toLowerCase(),
+                                                            lastUpdateNote: aiAnalysis.summary,
+                                                            updatedAt: Timestamp.now()
+                                                        };
+
+                                                        await updateDoc(doc(db, 'partnerships', selectedPartner.id), updates);
+
+                                                        // Update local state for instant feedback
+                                                        setPartnerships(prev => prev.map(p =>
+                                                            p.id === selectedPartner.id ? { ...p, ...updates } as any : p
+                                                        ));
+                                                        setSelectedPartner(prev => prev ? { ...prev, ...updates } as any : null);
+
+                                                        alert('Амжилттай шинэчлэгдлээ!');
+                                                        setAiAnalysis(null);
+                                                        setAiEmailText('');
+                                                    }}>
+                                                        Тохиргоог хэрэгжүүлэх
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -691,6 +785,6 @@ export default function PartnershipsPage() {
                     </div>
                 )}
             </Modal>
-        </AdminLayout>
+        </AdminLayout >
     );
 }

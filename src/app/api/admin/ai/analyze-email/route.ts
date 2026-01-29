@@ -14,13 +14,28 @@ export async function POST(req: Request) {
         }
 
         const systemPrompt = `
-      You are an expert admin assistant for Noble Consulting, an education consulting firm. 
+      You are an expert admin assistant for Noble Consulting, an education consulting firm in Mongolia. 
       Analyze the following email from a potential school partner (${partnerTarget}).
-      Extract:
-      1. Current Partnership Status (pending, submitted, processing, approved, rejected, incomplete, dormant)
-      2. Summary of the information (Brief, max 2 sentences)
-      3. Next Action Required (Action item for Noble Consulting staff)
-      4. Proposed followup message (Cordial, professional, in the language of the email - usually English).
+      
+      Your goal is to detect the current progress and assign the correct status from this list:
+      - prospect: No contact yet.
+      - contacted: Initial inquiry sent, first response received.
+      - interested: Partner shows clear interest in collaborating.
+      - applying: Noble is currently filling out forms/applications.
+      - submitted: Application sent, awaiting decision.
+      - under_review: Partner is checking references or reviewing data.
+      - negotiation: Discussing contract terms or commissions.
+      - contract_sent: Contract is being signed by either party.
+      - active: Fully signed agreement, Noble is an official agent.
+      - rejected: Partnership was declined.
+      - dormant: No response for a long time.
+      - on_hold: Paused for specific reasons.
+
+      Provide:
+      1. status: One of the keywords above.
+      2. summary: 1-2 sentences in Mongolian explaining the core message.
+      3. nextAction: Clear instruction for Noble staff (in Mongolian).
+      4. proposedReply: A professional, warm follow-up email in English ready to be sent.
 
       Respond ONLY with a JSON object:
       {
