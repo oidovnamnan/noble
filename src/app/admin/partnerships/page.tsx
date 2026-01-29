@@ -396,7 +396,7 @@ export default function PartnershipsPage() {
                             { value: 'incomplete', label: 'Мэдээлэл дутуу' },
                         ]}
                         value={newPartnerData.status}
-                        onChange={val => setNewPartnerData({ ...newPartnerData, status: val })}
+                        onChange={e => setNewPartnerData({ ...newPartnerData, status: e.target.value })}
                     />
                     <Textarea
                         label="Сүүлийн явц / Тайлбар"

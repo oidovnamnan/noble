@@ -241,7 +241,7 @@ export default function StaffManagementPage() {
                                 { value: 'admin', label: 'Админ' }
                             ]}
                             value={newStaffData.role}
-                            onChange={val => setNewStaffData({ ...newStaffData, role: val as UserRole })}
+                            onChange={e => setNewStaffData({ ...newStaffData, role: e.target.value as UserRole })}
                         />
                         <Input
                             label="Алба хэлтэс"
