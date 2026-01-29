@@ -163,6 +163,7 @@
     "admin": {
         "dashboard": "Dashboard",
         "customers": "Customers",
+        "partnerships": "Partnerships",
         "applications": "Applications",
         "news": "News",
         "services": "Services",

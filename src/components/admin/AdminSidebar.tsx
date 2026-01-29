@@ -29,6 +29,7 @@ const menuItems = [
     {
         group: 'admin.menu.main', items: [
             { href: '/admin', icon: LayoutDashboard, label: 'admin.dashboard' },
+            { href: '/admin/partnerships', icon: Briefcase, label: 'admin.partnerships' },
             { href: '/admin/customers', icon: Users, label: 'admin.customers' },
             { href: '/admin/applications', icon: FileText, label: 'admin.applications' },
         ]

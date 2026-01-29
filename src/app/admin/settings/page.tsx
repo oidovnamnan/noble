@@ -44,8 +44,9 @@ export default function AdminSettingsPage() {
         companyNameEn: 'Noble Consulting',
         email: 'nobleworldgate@gmail.com',
         phone: '+976 9911-2233',
-        addressMn: 'Улаанбаатар, Сүхбаатар дүүрэг, 1-р хороо',
-        addressEn: '1st Khoroo, Sukhbaatar District, Ulaanbaatar',
+        addressMn: 'Улаанбаатар, Чингэлтэй дүүрэг, 5-р хороо, Премиум палас, 508 тоот',
+        addressEn: 'Suite 508, 5th Floor, Premium Palace, 5th Khoroo, Chingeltei District, Ulaanbaatar 15150',
+        registrationNumber: '7233705',
 
         // Firebase (Environment generator)
         firebaseApiKey: '',

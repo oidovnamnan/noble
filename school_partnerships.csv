@@ -1,16 +1,27 @@
 №,Байгууллага / Сургууль,Улс,Харилцагч (Contact),Төлөв,Сүүлийн Явц
-1,Simon Fraser University (SFU),Canada,Intl. Student Advisors,Хариу хүлээж буй,"Автомат хариу ирсэн. Ажлын 7-10 хоногт хариу өгнө."
+2,1,Simon Fraser University (SFU),Canada,Intl. Student Advisors,Education Planner-аар дамжина,"Anna Liu: Full-time MBA, MSc Finance, ESL, UG хөтөлбөрүүдтэй."
 2,University of Auckland,New Zealand,Megan / Intl. Marketing,Хариу хүлээж буй,"Шинэ агент болох хүсэлтээ int-marketing@auckland.ac.nz хаяг руу илгээсэн. Хариу хүлээж байна."
-3,University of Canterbury,New Zealand,Agent Relations,Өргөдөл бөглөх,Agent Survey бөглөх шаардлагатай.
+3,University of Canterbury,New Zealand,Contact Centre,Хариу хүлээж буй,"Автомат хариу ирсэн. 24 цагийн дотор хариу өгнө гэсэн."
 4,Lincoln University,New Zealand,Partnership Team,Дахин хандах,"Татгалзсан хариу. ""Land-based"" чиглэлээр дахин хандана."
-5,IPU New Zealand,New Zealand,Recruitment,Уулзалт товлосон,Zoom уулзалттай.
+5,IPU New Zealand,New Zealand,Jason D. Sheen (Marketing Director),Өргөдөл илгээсэн,"Jason-д бүх бичиг баримтыг (Application, Code of Conduct, Profile, Strategy, Registration) илгээсэн."
 6,NZLC (Language Centres),New Zealand,Amanda Wong (amandaw@nzlc.ac.nz),Лавлагаа шалгах,"Amanda-гаас имэйл ирсэн. Narantungalag Ganbold-той үргэлжлүүлэн ажиллаж байна."
 7,Languages International,New Zealand,Brett Shirreffs,Мэдээлэл дутуу,Компанийн мэдээлэл илгээх хүлээгдэж байна.
-8,Education Planner,Canada,Anna Liu,Харилцаатай,Түнш сургуулиудын жагсаалт хүлээж байна.
-9,Toronto Metropolitan University (TMU),Canada,Intl. Admissions,Өргөдөл бөглөх,"""Request Form"" бөглөх шаардлагатай. Имэйл: international@torontomu.ca"
-10,Vancouver Island University (VIU),Canada,Support International,Хариу хүлээж буй,Автомат хариу ирсэн. Ажлын 2 өдөрт хариу өгнө.
+8,Education Planner,Canada,Anna Liu,Өргөдөл бөглөх,"Жагсаалт ирсэн. ""DD Info Request"" форм бөглөх шаардлагатай. Комисс: 70-75%."
+10,9,Toronto Metropolitan University (TMU),Canada,Intl. Admissions,Education Planner-аар дамжина,"Anna Liu: PG & ESL, UG хөтөлбөрүүдтэй."
+11,10,Vancouver Island University (VIU),Canada,Support International,Education Planner-аар дамжина,"Anna Liu: Master (MASLM, MBA...), ESL, UG хөтөлбөрүүдтэй."
 11,Niagara College Canada,Canada,Inquiry Response Team,Хариу хүлээж буй,Автомат хариу ирсэн. Ажлын 3-5 хоногт хариу өгнө.
-12,George Brown College,Canada,Mona Modaresi,Хариу хүлээж буй,Түншлэлийн саналыг (Proposal) шинэ хаяг руу илгээсэн. Хариу хүлээж байна.
+13,12,George Brown College,Canada,Mona Modaresi,Education Planner-аар дамжина,"Anna Liu-ийн ""College"" жагсаалтанд байна."
 13,English Teaching College (ETC),New Zealand,Peggy Chiew (peggy@etc.ac.nz),Лавлагаа шалгах,Өргөдлөө амжилттай өгсөн. Reference Check хийгдэж байна. Үүний дараа Гэрээ (Agent Agreement) ирнэ.
-14,University of Manitoba,Canada,Undergraduate Admissions,Хариу хүлээж буй,Автомат хариу ирсэн. Ачаалал их байгаа тул хариу удаж магадгүй гэсэн.
-15,University Canada West (UCW),Canada,UCW Info Team,Хариу хүлээж буй,Автомат хариу ирсэн. Ажлын 2 өдөрт багтаан хариу өгнө гэсэн.
+15,14,University of Manitoba,Canada,Undergraduate Admissions,Education Planner-аар дамжина,"Anna Liu: MBA, Master, ESL, UG, Continuing Ed."
+16,15,University Canada West (UCW),Canada,UCW Info Team,Education Planner-аар дамжина,"Anna Liu: PG & ESL, UG хөтөлбөрүүдтэй."
+17,16,McMaster University,Canada,Nicole Stanfield,Дахин хандах,"Шинэ агент авахгүй байгаа. Мэдээллийг хадгалж авсан, ирээдүйд хандах боломжтой."
+18,17,Red River College Polytechnic,Canada,International Admissions,Хариу хүлээж буй,"Автомат хариу ирсэн. Ажлын 3-5 хоногт хариу өгнө гэсэн."
+19,18,Sault College,Canada,Sault College International,Хариу хүлээж буй,"Автомат хариу ирсэн. Ажлын 3 хоногт хариу өгнө гэсэн."
+20,19,Canadore College,Canada,International Office,Хариу хүлээж буй,"Автомат хариу ирсэн. Ачаалал ихтэй байгаа тул хариу хүлээгдэж байна."
+21,20,University of Otago,New Zealand,AskOtago,Хариу хүлээж буй,"Тикет үүссэн (UO-01510214). Ажлын 2 хоногт багтаан хариу өгнө гэсэн."
+22,21,Otago Polytechnic,New Zealand,Cameron James-Pirie,Хариу хүлээж буй,"Захидал холбогдох ажилтан руу шилжсэн (Cameron James-Pirie-ээс хариу ирсэн)."
+23,22,Fanshawe College,Canada,Wayne Racher,Өргөдөл бөглөх,"Порталаар өргөдөл гаргах шаардлагатай (edupartner.fanshawec.ca). 2 лавлагаа (references) хэрэгтэй."
+24,23,Algoma University,Canada,Jaden Cerasuolo,Өргөдөл илгээсэн,"Онлайн форм бөглөж илгээсэн. Дагалдах бичиг баримтуудыг (Profile, Strategy, Registration) мэйлээр илгээх шаардлагатай."
+25,24,Centennial College,Canada,seasia@centennialcollege.ca,Өргөдөл илгээсэн,"Зүүн өмнөд Ази хариуцсан баг руу (seasia@) бүрэн материал илгээсэн. Хариу хүлээж байна."
+26,25,AUT New Zealand,New Zealand,International Agent Team,Хариу хүлээж буй,"Судалгааг бөглөж илгээсэн. 2-р сарын эхний долоо хоногт багтаж хариу өгнө гэсэн."
+27,26,University of Waikato,New Zealand,Partnerships Team,Өргөдөл илгээсэн,"Partnerships team (partnership.enquiries@) руу материал илгээсэн. Хариу хүлээж байна."

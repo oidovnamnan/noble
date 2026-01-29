@@ -148,7 +148,7 @@ export function Footer() {
                                     </p>
                                     <p className="text-slate-500 text-xs text-balance">
                                         {language === 'mn'
-                                            ? '5-р хороо, Их тойруу, Премиум Пэлас, 5-р давхар, 508 тоот'
+                                            ? '5-р хороо, Их тойруу, Премиум палас, 5-р давхар, 508 тоот'
                                             : '5th Khoroo, Ikh Toiruu, Premium Palace, 5th Floor, Room 508'}
                                     </p>
                                 </div>

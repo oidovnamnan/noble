@@ -74,14 +74,16 @@ const services = [
 const partners = [
   { name: 'University of Auckland', logo: '🇳🇿' },
   { name: 'University of Canterbury', logo: '🇳🇿' },
+  { name: 'University of Waikato', logo: '🇳🇿' },
+  { name: 'AUT University', logo: '🇳🇿' },
   { name: 'Simon Fraser University', logo: '🇨🇦' },
   { name: 'University of Manitoba', logo: '🇨🇦' },
   { name: 'Lincoln University', logo: '🇳🇿' },
   { name: 'Toronto Metropolitan', logo: '🇨🇦' },
-  { name: 'Vancouver Island Uni', logo: '🇨🇦' },
-  { name: 'Niagara College', logo: '🇨🇦' },
+  { name: 'Fanshawe College', logo: '🇨🇦' },
+  { name: 'Centennial College', logo: '🇨🇦' },
   { name: 'IPU New Zealand', logo: '🇳🇿' },
-  { name: 'NZLC Language Centres', logo: '🇳🇿' },
+  { name: 'Algoma University', logo: '🇨🇦' },
 ];
 
 // Check if device is mobile
@@ -377,6 +379,63 @@ function DesktopLanding({ language }: { language: 'mn' | 'en' }) {
                 </motion.div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Quality Focus Section */}
+      <section className="py-24 px-6 lg:px-8 bg-slate-900/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative aspect-square lg:aspect-video rounded-[40px] overflow-hidden group"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20 z-10" />
+              <img
+                src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2670&auto=format&fit=crop"
+                alt="Education Quality"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 flex items-center justify-center z-20">
+                <div className="p-8 glass-dark rounded-3xl text-center border-white/20">
+                  <Star className="w-12 h-12 text-amber-400 mx-auto mb-4 animate-star-glow" />
+                  <p className="text-2xl font-black text-white uppercase tracking-widest">Quality over Quantity</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="space-y-8"
+            >
+              <div>
+                <h2 className="text-4xl font-black text-white mb-6">
+                  {language === 'mn' ? 'Бидний зарчим: Чанарыг эрхэмлэнэ' : 'Our Philosophy: Quality First'}
+                </h2>
+                <p className="text-slate-400 text-lg leading-relaxed">
+                  {language === 'mn'
+                    ? 'Бид олон тооны оюутныг биш, харин тухайн сургууль болон визний шаардлагыг бүрэн хангасан "Чанартай" оюутнуудыг бэлтгэхийг зоридог. Энэ нь бидний 95%+ визний амжилтын үндэс юм.'
+                    : 'We focus on recruiting genuine, high-quality students who meet the academic and financial requirements of world-class institutions. This commitment ensures our 95%+ visa success rate.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {[
+                  { title: { mn: 'Нарийн шалгалт', en: 'Pre-screening' }, desc: { mn: 'Оюутан бүрийн материалыг 3 үе шаттай шалгана.', en: '3-step rigorous background and financial checks.' } },
+                  { title: { mn: 'Хувийн зөвлөгөө', en: 'Personalized' }, desc: { mn: 'Оюутан бүрийн зорилгод нийцсэн карьер төлөвлөлт.', en: 'Tailored career path based on individual goals.' } },
+                ].map((item, i) => (
+                  <div key={i} className="glass-dark p-6 rounded-2xl border border-white/5 hover:border-amber-400/30 transition-all">
+                    <h4 className="text-white font-bold mb-2">{item.title[language]}</h4>
+                    <p className="text-sm text-slate-400">{item.desc[language]}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
