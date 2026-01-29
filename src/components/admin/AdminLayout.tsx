@@ -17,7 +17,7 @@ interface AdminLayoutProps {
 export function AdminLayout({ children }: AdminLayoutProps) {
     const router = useRouter();
     const { user, isAuthenticated, isLoading } = useAuthStore();
-    const { sidebarOpen } = useAppStore();
+    const { sidebarOpen, language, setLanguage } = useAppStore();
 
     useEffect(() => {
         if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
@@ -62,8 +62,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-slate-50 rounded-xl text-slate-500 transition-all">
-                            <Globe className="w-5 h-5" />
+                        <button
+                            onClick={() => setLanguage(language === 'mn' ? 'en' : 'mn')}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 rounded-xl text-slate-500 transition-all font-bold text-xs"
+                        >
+                            <Globe className="w-4 h-4" />
+                            <span className="uppercase">{language}</span>
                         </button>
                         <button className="p-2 hover:bg-slate-50 rounded-xl text-slate-500 transition-all">
                             <Bell className="w-5 h-5" />

@@ -1,7 +1,6 @@
-// Admin Customers Management Page
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, Button, Input, Badge, StatusBadge } from '@/components/ui';
 import {
@@ -15,22 +14,48 @@ import {
     MoreVertical,
     CheckCircle2,
     FileText,
-    CreditCard
+    CreditCard,
+    User as UserIcon,
+    Loader2
 } from 'lucide-react';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
-
-const mockCustomers = [
-    { id: '1', name: 'Батболд Болд', email: 'bold@example.com', phone: '88118822', appsCount: 2, totalPaid: 750000, joinedAt: '2026-01-05', status: 'active' },
-    { id: '2', name: 'Дорж Сараа', email: 'saraa@example.com', phone: '99001122', appsCount: 1, totalPaid: 280000, joinedAt: '2026-01-08', status: 'active' },
-    { id: '3', name: 'Ганболд Тэмүүлэн', email: 'temuulen@gmail.com', phone: '80556677', appsCount: 1, totalPaid: 0, joinedAt: '2026-01-12', status: 'pending' },
-    { id: '4', name: 'Саруул Ану', email: 'anu@mail.mn', phone: '91912233', appsCount: 1, totalPaid: 450000, joinedAt: '2026-01-11', status: 'active' },
-    { id: '5', name: 'Очир Золбоо', email: 'zolboo@example.mn', phone: '88889999', appsCount: 3, totalPaid: 1200000, joinedAt: '2025-12-20', status: 'active' },
-];
+import { db } from '@/lib/firebase/config';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 
 export default function AdminCustomersPage() {
     const { t, language } = useTranslation();
+    const [customers, setCustomers] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            if (!db) return;
+            try {
+                const q = query(
+                    collection(db, 'users'),
+                    where('role', '==', 'customer'),
+                    orderBy('createdAt', 'desc')
+                );
+                const snapshot = await getDocs(q);
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setCustomers(data);
+            } catch (error) {
+                console.error('Error fetching customers:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchCustomers();
+    }, []);
+
+    const filteredCustomers = customers.filter(c =>
+        `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.phone || '').includes(searchQuery)
+    );
 
     return (
         <AdminLayout>
@@ -47,12 +72,12 @@ export default function AdminCustomersPage() {
                 </div>
 
                 {/* Global Stats bar */}
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                        { label: t('admin.totalCustomers'), value: '1,250', icon: User, color: 'text-blue-600' },
-                        { label: t('admin.active'), value: '1,120', icon: CheckCircle2, color: 'text-emerald-600' },
-                        { label: t('admin.newPost'), value: '45', icon: Clock, color: 'text-amber-600' },
-                        { label: t('admin.appsCount'), value: '3,420', icon: FileText, color: 'text-purple-600' },
+                        { label: t('admin.totalCustomers'), value: customers.length.toString(), icon: UserIcon, color: 'text-blue-600' },
+                        { label: t('admin.active'), value: customers.length.toString(), icon: CheckCircle2, color: 'text-emerald-600' },
+                        { label: 'ШИНЭ', value: '45', icon: Clock, color: 'text-amber-600' },
+                        { label: 'ХҮСЭЛТҮҮД', value: '3,420', icon: FileText, color: 'text-purple-600' },
                     ].map((stat, idx) => (
                         <Card key={idx} variant="outlined" padding="sm" className="bg-white/50 border-slate-100 flex items-center gap-4">
                             <div className={cn("w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center", stat.color)}>
@@ -97,61 +122,73 @@ export default function AdminCustomersPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {mockCustomers.map((customer) => (
-                                <tr key={customer.id} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                                                {customer.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-900">{customer.name}</p>
-                                                <p className="text-xs text-slate-400 font-medium tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">ID: {customer.id}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-                                                <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                                {customer.email}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-                                                <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                                {customer.phone}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="info" className="font-bold">{customer.appsCount}</Badge>
-                                            <span className="text-xs text-slate-400 font-medium">
-                                                {language === 'mn' ? 'хүсэлт' : 'apps'}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center gap-2">
-                                            <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
-                                            <span className="text-sm font-bold text-slate-700">{formatCurrency(customer.totalPaid)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <span className="text-xs text-slate-500 font-medium">{customer.joinedAt}</span>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <StatusBadge
-                                            status={customer.status === 'active' ? 'approved' : 'pending'}
-                                            label={customer.status === 'active' ? t('admin.active') : t('status.pending')}
-                                        />
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <button className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all text-slate-400 hover:text-blue-600">
-                                            <MoreVertical className="w-4 h-4" />
-                                        </button>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-10 text-center">
+                                        <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
                                     </td>
                                 </tr>
-                            ))}
+                            ) : filteredCustomers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-10 text-center text-slate-500">Мэдээлэл олдсонгүй.</td>
+                                </tr>
+                            ) : (
+                                filteredCustomers.map((customer) => (
+                                    <tr key={customer.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                                                    {customer.lastName?.charAt(0) || customer.firstName?.charAt(0) || 'U'}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900">{customer.lastName} {customer.firstName}</p>
+                                                    <p className="text-xs text-slate-400 font-medium tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">ID: {customer.id}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+                                                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                                    {customer.email}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+                                                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                                    {customer.phone || 'N/A'}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="info" className="font-bold">{customer.appsCount || 0}</Badge>
+                                                <span className="text-xs text-slate-400 font-medium">
+                                                    {language === 'mn' ? 'хүсэлт' : 'apps'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-2">
+                                                <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+                                                <span className="text-sm font-bold text-slate-700">{formatCurrency(customer.totalPaid || 0)}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <span className="text-xs text-slate-500 font-medium">{customer.createdAt?.toDate ? formatDate(customer.createdAt.toDate()) : 'N/A'}</span>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <StatusBadge
+                                                status={customer.status === 'active' || true ? 'approved' : 'pending'}
+                                                label={customer.status === 'active' || true ? t('admin.active') : t('status.pending')}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <button className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all text-slate-400 hover:text-blue-600">
+                                                <MoreVertical className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </Card>
@@ -159,6 +196,3 @@ export default function AdminCustomersPage() {
         </AdminLayout>
     );
 }
-
-// Fixed Lucide user icon
-import { User } from 'lucide-react';

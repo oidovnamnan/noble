@@ -18,23 +18,48 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
+import { db } from '@/lib/firebase/config';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function AdminDashboard() {
     const { t } = useTranslation();
+    const [statsData, setStatsData] = React.useState({
+        customers: 0,
+        applications: 0,
+        pending: 0,
+        revenue: '₮0'
+    });
+    const [recentApps, setRecentApps] = React.useState<any[]>([]);
+
+    React.useEffect(() => {
+        if (!db) return;
+
+        const fetchData = async () => {
+            if (!db) return;
+            const customersSnap = await getDocs(collection(db!, 'users'));
+            const appsSnap = await getDocs(collection(db!, 'applications'));
+
+            const apps = appsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const pending = apps.filter((a: any) => a.status === 'pending').length;
+
+            setStatsData({
+                customers: customersSnap.docs.filter(d => d.data().role === 'customer').length,
+                applications: apps.length,
+                pending: pending,
+                revenue: '₮12.4M' // Static for now
+            });
+
+            setRecentApps(apps.slice(0, 5));
+        };
+
+        fetchData();
+    }, []);
 
     const stats = [
-        { label: t('admin.totalCustomers'), value: '1,250', icon: Users, color: 'bg-blue-500', trend: '+12%' },
-        { label: t('admin.activeApplications'), value: '84', icon: FileText, color: 'bg-emerald-500', trend: '+5%' },
-        { label: t('admin.pendingDocuments'), value: '12', icon: Clock, color: 'bg-amber-500', trend: '-2%' },
-        { label: t('admin.monthlyRevenue'), value: '₮12.4M', icon: TrendingUp, color: 'bg-purple-500', trend: '+18%' },
-    ];
-
-    const resentApplications = [
-        { id: '1', customer: 'Б.Болд', service: 'Япон оюутны виз', status: 'processing', date: '2026-01-13' },
-        { id: '2', customer: 'Д.Сараа', service: 'Солонгос хэлний сургалт', status: 'documents_incomplete', date: '2026-01-12' },
-        { id: '3', customer: 'Г.Тэмүүлэн', service: 'Герман ажлын виз', status: 'pending', date: '2026-01-12' },
-        { id: '4', customer: 'С.Ану', service: 'АНУ аялалын виз', status: 'payment_pending', date: '2026-01-11' },
-        { id: '5', customer: 'О.Золбоо', service: 'Шенген виз', status: 'approved', date: '2026-01-10' },
+        { label: t('admin.totalCustomers'), value: statsData.customers.toLocaleString(), icon: Users, color: 'bg-blue-500', trend: '+12%' },
+        { label: t('admin.activeApplications'), value: statsData.applications.toLocaleString(), icon: FileText, color: 'bg-emerald-500', trend: '+5%' },
+        { label: t('admin.pendingDocuments'), value: statsData.pending.toLocaleString(), icon: Clock, color: 'bg-amber-500', trend: '-2%' },
+        { label: t('admin.monthlyRevenue'), value: statsData.revenue, icon: TrendingUp, color: 'bg-purple-500', trend: '+18%' },
     ];
 
     return (
@@ -102,32 +127,38 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {resentApplications.map((app) => (
-                                        <tr key={app.id} className="hover:bg-slate-50/50 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                                                        {app.customer.charAt(0)}
-                                                    </div>
-                                                    <span className="text-sm font-bold text-slate-700">{app.customer}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm text-slate-500 font-medium">{app.service}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <StatusBadge status={app.status} label={t(`status.${app.status}`)} />
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-slate-400 font-medium">
-                                                {app.date}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all text-slate-400 hover:text-blue-600">
-                                                    <ArrowUpRight className="w-4 h-4" />
-                                                </button>
-                                            </td>
+                                    {recentApps.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">No recent applications</td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        recentApps.map((app) => (
+                                            <tr key={app.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs text-uppercase">
+                                                            {app.customerName?.charAt(0) || 'U'}
+                                                        </div>
+                                                        <span className="text-sm font-bold text-slate-700">{app.customerName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm text-slate-500 font-medium truncate max-w-[150px] block">{app.serviceName}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <StatusBadge status={app.status} label={t(`status.${app.status}`)} />
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-slate-400 font-medium">
+                                                    {app.createdAt?.toDate ? formatDate(app.createdAt.toDate()) : 'N/A'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all text-slate-400 hover:text-blue-600">
+                                                        <ArrowUpRight className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </Card>
