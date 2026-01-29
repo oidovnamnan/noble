@@ -43,6 +43,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
                     if (userDoc.exists()) {
                         const userData = { id: firebaseUser.uid, ...userDoc.data() } as User;
+                        if (firebaseUser.email === 'nobleworldgate@gmail.com') {
+                            userData.role = 'admin';
+                        }
                         setUser(userData);
                         setUserState(userData);
                     } else {
@@ -53,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             firstName: '',
                             lastName: '',
                             phone: '',
-                            role: 'customer',
+                            role: firebaseUser.email === 'nobleworldgate@gmail.com' ? 'admin' : 'customer',
                             language: 'mn',
                             notifications: { email: true, push: true, sms: false },
                             createdAt: new Date(),
@@ -80,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         firstName: firebaseUser.displayName?.split(' ')[0] || 'Хэрэглэгч',
                         lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
                         phone: '',
-                        role: 'customer',
+                        role: firebaseUser.email === 'nobleworldgate@gmail.com' ? 'admin' : 'customer',
                         language: 'mn',
                         notifications: { email: true, push: true, sms: false },
                         createdAt: new Date(),
