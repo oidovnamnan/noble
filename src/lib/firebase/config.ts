@@ -29,16 +29,20 @@ if (typeof window !== 'undefined') {
                 app = getApps()[0];
             }
             auth = getAuth(app);
-            // Use initializeFirestore with forced long polling for better reliability in varying network conditions
+
+            // Standard Firestore initialization with a more robust config
+            // We force long polling because of reported connection issues in certain environments
             db = initializeFirestore(app!, {
                 experimentalForceLongPolling: true,
             });
+
             storage = getStorage(app!);
+            console.log('Firebase Services Initialized (Forced Long Polling)');
         } catch (error) {
             console.error('Firebase initialization error:', error);
         }
     } else {
-        console.warn('Firebase API key is missing. Authentication and database features will not work.');
+        console.warn('Firebase API key is missing or placeholder. API Key starts with:', firebaseConfig.apiKey?.substring(0, 5));
     }
 }
 

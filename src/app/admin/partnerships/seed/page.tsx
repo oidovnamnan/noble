@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, Button } from '@/components/ui';
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, Timestamp, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { Loader2, Database, Trash2, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { collection, addDoc, Timestamp, getDocs, deleteDoc, doc, terminate, clearIndexedDbPersistence } from 'firebase/firestore';
+import { Loader2, Database, Trash2, CheckCircle2, AlertCircle, RefreshCcw } from 'lucide-react';
 
 const partnersData = [
     { name: 'Simon Fraser University (SFU)', country: 'Canada', contactPerson: 'Anna Liu', status: 'processing', lastUpdateNote: 'Full-time MBA, MSc Finance, ESL, UG хөтөлбөрүүдтэй.' },
@@ -39,14 +40,39 @@ const partnersData = [
 export default function SeedPartnerships() {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
+    const [progress, setProgress] = useState(0);
 
-    const seedData = async () => {
+    const handleFixConnection = async () => {
         if (!db) return;
         setLoading(true);
-        setStatus('Seeding data...');
+        setStatus('Fixing connection (Resetting Firebase)...');
         try {
+            await terminate(db);
+            await clearIndexedDbPersistence(db);
+            setStatus('Connection cache cleared. Please refresh the page.');
+            window.location.reload();
+        } catch (error) {
+            console.error(error);
+            setStatus('Error fixing connection.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const seedData = async () => {
+        if (!db) {
+            setStatus('Error: Database not initialized.');
+            return;
+        }
+        setLoading(true);
+        setStatus('Connecting and Seeding...');
+        setProgress(0);
+
+        try {
+            let count = 0;
             for (const partner of partnersData) {
-                await addDoc(collection(db, 'partnerships'), {
+                setStatus(`Importing: ${partner.name}...`);
+                const docRef = await addDoc(collection(db, 'partnerships'), {
                     ...partner,
                     createdAt: Timestamp.now(),
                     updatedAt: Timestamp.now(),
@@ -57,11 +83,13 @@ export default function SeedPartnerships() {
                         updatedBy: 'System'
                     }]
                 });
+                count++;
+                setProgress(Math.round((count / partnersData.length) * 100));
             }
-            setStatus('Success! All partners imported.');
-        } catch (error) {
+            setStatus('Success! All 26 partners imported.');
+        } catch (error: any) {
             console.error(error);
-            setStatus('Error seeding data.');
+            setStatus(`Error: ${error.message || 'Unknown error'}. Check console.`);
         } finally {
             setLoading(false);
         }
@@ -76,10 +104,11 @@ export default function SeedPartnerships() {
             const snap = await getDocs(collection(db!, 'partnerships'));
             const deletions = snap.docs.map(d => deleteDoc(doc(db!, 'partnerships', d.id)));
             await Promise.all(deletions);
-            setStatus('Cleared!');
-        } catch (error) {
+            setStatus('Database cleared!');
+            setProgress(0);
+        } catch (error: any) {
             console.error(error);
-            setStatus('Error clearing data.');
+            setStatus(`Error: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -89,30 +118,67 @@ export default function SeedPartnerships() {
         <AdminLayout>
             <div className="max-w-2xl mx-auto py-12">
                 <Card className="p-8 space-y-6">
-                    <div className="flex items-center gap-4 text-blue-600">
-                        <Database className="w-8 h-8" />
-                        <h1 className="text-2xl font-bold text-slate-900">Partnership Data Seeding</h1>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-blue-600">
+                            <Database className="w-8 h-8" />
+                            <h1 className="text-2xl font-bold text-slate-900">Partnership Seeding</h1>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={handleFixConnection} className="text-slate-400">
+                            <RefreshCcw className="w-4 h-4 mr-2" />
+                            Fix Connection
+                        </Button>
                     </div>
-                    <p className="text-slate-500">
-                        This tool will import {partnersData.length} records from your CSV into the Firestore database.
+
+                    <p className="text-slate-500 font-medium">
+                        This tool will import {partnersData.length} school records. If it gets stuck, use "Fix Connection" or check if you are offline.
                     </p>
 
-                    <div className="flex gap-4">
-                        <Button onClick={seedData} disabled={loading} className="flex-1">
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                            Import Partners
-                        </Button>
-                        <Button variant="outline" onClick={clearData} disabled={loading} className="text-red-500 hover:text-red-600">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Clear Database
-                        </Button>
+                    <div className="space-y-4">
+                        <div className="flex gap-4">
+                            <Button onClick={seedData} disabled={loading} className="flex-1 h-14 rounded-2xl shadow-lg shadow-blue-500/20">
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
+                                Start Import
+                            </Button>
+                            <Button variant="outline" onClick={clearData} disabled={loading} className="h-14 px-6 rounded-2xl text-red-500 border-red-100 hover:bg-red-50">
+                                <Trash2 className="w-5 h-5" />
+                            </Button>
+                        </div>
+
+                        {loading && (
+                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div
+                                    className="bg-blue-600 h-full transition-all duration-300"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {status && (
-                        <div className={`p-4 rounded-xl text-sm font-bold ${status.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                            {status}
+                        <div className={cn(
+                            "p-4 rounded-2xl flex items-start gap-3 border transition-all animate-fade-in",
+                            status.includes('Error')
+                                ? "bg-red-50 border-red-100 text-red-700"
+                                : status.includes('Success')
+                                    ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                                    : "bg-blue-50 border-blue-100 text-blue-700"
+                        )}>
+                            {status.includes('Error') ? <AlertCircle className="w-5 h-5 flex-shrink-0" /> : <Loader2 className={cn("w-5 h-5 flex-shrink-0", loading && "animate-spin")} />}
+                            <p className="text-sm font-bold">{status}</p>
                         </div>
                     )}
+
+                    <div className="pt-6 border-t border-slate-100">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Schools to be imported</h3>
+                        <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2">
+                            {partnersData.map((p, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-700">
+                                    <span>{p.name}</span>
+                                    <span className="text-[10px] bg-white px-2 py-0.5 rounded-md border border-slate-100 whitespace-nowrap">{p.country}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </Card>
             </div>
         </AdminLayout>
