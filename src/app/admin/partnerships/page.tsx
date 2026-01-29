@@ -192,11 +192,18 @@ export default function PartnershipsPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
+            case 'prospect': return 'bg-slate-100 text-slate-600';
+            case 'contacted': return 'bg-blue-50 text-blue-600';
+            case 'interested': return 'bg-indigo-50 text-indigo-600';
+            case 'applying': return 'bg-amber-50 text-amber-600';
             case 'submitted': return 'bg-blue-100 text-blue-700';
-            case 'processing': return 'bg-amber-100 text-amber-700';
-            case 'approved': return 'bg-emerald-100 text-emerald-700';
+            case 'under_review': return 'bg-orange-100 text-orange-700';
+            case 'negotiation': return 'bg-purple-100 text-purple-700';
+            case 'contract_sent': return 'bg-cyan-100 text-cyan-700';
+            case 'active': return 'bg-emerald-100 text-emerald-700';
             case 'rejected': return 'bg-red-100 text-red-700';
-            case 'incomplete': return 'bg-purple-100 text-purple-700';
+            case 'dormant': return 'bg-slate-200 text-slate-500';
+            case 'on_hold': return 'bg-rose-100 text-rose-700';
             default: return 'bg-slate-100 text-slate-700';
         }
     };
@@ -230,7 +237,7 @@ export default function PartnershipsPage() {
                             />
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-                            {['all', 'pending', 'submitted', 'processing', 'approved', 'rejected', 'incomplete'].map((status) => (
+                            {['all', 'prospect', 'contacted', 'interested', 'applying', 'submitted', 'under_review', 'active', 'rejected'].map((status) => (
                                 <button
                                     key={status}
                                     onClick={() => setFilterStatus(status)}

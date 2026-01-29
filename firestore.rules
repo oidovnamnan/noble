@@ -55,5 +55,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isStaff();
     }
+    // Partnerships collection
+    match /partnerships/{partnerId} {
+      allow read: if true;
+      allow write: if isAdmin() || (isSignedIn() && request.auth.token.email == 'nobleworldgate@gmail.com');
+    }
   }
 }

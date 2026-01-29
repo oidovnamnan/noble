@@ -371,13 +371,18 @@ export interface ChatSession {
 // ============================================
 
 export type PartnershipStatus =
-  | 'pending'      // Шинэ агент болох хүсэлт илгээсэн / Ирсэн
-  | 'submitted'    // Анкет бөглөж илгээсэн
-  | 'processing'   // Материал хянагдаж байгаа / Reference check
-  | 'approved'     // Гэрээ байгуулсан / Идэвхтэй
-  | 'rejected'     // Татгалзсан
-  | 'incomplete'   // Дутуу материалтай
-  | 'dormant';     // Идэвхгүй
+  | 'prospect'          // Ирээдүйтэй сургууль (Бүртгэсэн боловч хараахан холбогдоогүй)
+  | 'contacted'         // Анхны имэйл илгээсэн
+  | 'interested'        // Хариу ирсэн, сонирхол илэрхийлсэн
+  | 'applying'          // Агент болох анкет бөглөж байгаа
+  | 'submitted'         // Анкет илгээсэн, хүлээгдэж буй
+  | 'under_review'      // Сургуулийн зүгээс хянаж байгаа (Ref. check)
+  | 'negotiation'       // Гэрээний нөхцөл ярилцаж байгаа
+  | 'contract_sent'     // Гэрээ ирсэн / Илгээсэн
+  | 'active'            // Гэрээ баталгаажсан, Идэвхтэй түнш
+  | 'rejected'          // Татгалзсан
+  | 'dormant'           // Харилцаа зогссон / Идэвхгүй
+  | 'on_hold';          // Түр хүлээгдэж буй
 
 export interface Partnership {
   id: string;
