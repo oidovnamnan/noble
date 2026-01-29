@@ -28,13 +28,12 @@ if (typeof window !== 'undefined') {
             } else {
                 app = getApps()[0];
             }
-            // ... inside try block
             auth = getAuth(app);
-            // Use initializeFirestore to fix "Client is offline" issues
-            db = initializeFirestore(app, {
+            // Use initializeFirestore with forced long polling for better reliability in varying network conditions
+            db = initializeFirestore(app!, {
                 experimentalForceLongPolling: true,
             });
-            storage = getStorage(app);
+            storage = getStorage(app!);
         } catch (error) {
             console.error('Firebase initialization error:', error);
         }

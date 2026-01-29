@@ -5,7 +5,6 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, Button, Badge, StatusBadge } from '@/components/ui';
 import {
-    Briefcase,
     Plus,
     Search,
     Filter,
@@ -15,13 +14,17 @@ import {
     Clock,
     FileText,
     ArrowUpRight,
-    Download
+    Download,
+    RefreshCw,
+    Bot,
+    PanelLeftClose,
+    PanelRightClose
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
 import { db } from '@/lib/firebase/config';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { Partnership } from '@/types';
 import { Loader2 } from 'lucide-react';
 
@@ -38,6 +41,9 @@ export default function PartnershipsPage() {
     const [detailsTab, setDetailsTab] = useState<'info' | 'comms' | 'docs'>('info');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [aiEmailText, setAiEmailText] = useState('');
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 
     // New partner form state
     const [newPartnerData, setNewPartnerData] = useState({
@@ -506,21 +512,109 @@ export default function PartnershipsPage() {
                             {detailsTab === 'comms' && (
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gmail Interaction</h4>
-                                        <Button size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => handleSendEmail(selectedPartner)}>New Email</Button>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Communication Hub</h4>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-blue-600"
+                                            leftIcon={<RefreshCw className={cn("w-4 h-4", isAiLoading && "animate-spin")} />}
+                                            onClick={() => { setAiEmailText(''); setAiAnalysis(null); }}
+                                        >
+                                            Reset
+                                        </Button>
                                     </div>
-                                    <div className="bg-slate-900 rounded-[32px] p-8 text-center space-y-4 border border-slate-800 shadow-2xl">
-                                        <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto">
-                                            <Globe className="w-8 h-8 text-blue-400 animate-pulse" />
+
+                                    {!aiAnalysis ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-blue-50/50 border border-blue-100 rounded-[32px] p-6">
+                                                <div className="flex items-start gap-4 mb-4">
+                                                    <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                                                        <Bot className="w-5 h-5 text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h5 className="font-bold text-slate-900">Email Analyzer</h5>
+                                                        <p className="text-xs text-slate-500">Paste an email from this partner to automatically update status and generate a reply.</p>
+                                                    </div>
+                                                </div>
+                                                <textarea
+                                                    className="w-full min-h-[200px] bg-white border border-slate-200 rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all font-medium"
+                                                    placeholder="Paste the partner email here..."
+                                                    value={aiEmailText}
+                                                    onChange={(e) => setAiEmailText(e.target.value)}
+                                                />
+                                                <Button
+                                                    className="w-full mt-4"
+                                                    isLoading={isAiLoading}
+                                                    disabled={!aiEmailText.trim()}
+                                                    onClick={async () => {
+                                                        setIsAiLoading(true);
+                                                        try {
+                                                            const res = await fetch('/api/admin/ai/analyze-email', {
+                                                                method: 'POST',
+                                                                body: JSON.stringify({ emailText: aiEmailText, partnerTarget: selectedPartner.name })
+                                                            });
+                                                            const data = await res.json();
+                                                            setAiAnalysis(data);
+                                                        } catch (e) {
+                                                            alert('AI Analysis failed.');
+                                                        } finally {
+                                                            setIsAiLoading(false);
+                                                        }
+                                                    }}
+                                                >
+                                                    Analyze with AI
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <h5 className="text-white font-bold text-lg">AI Email Hub</h5>
-                                        <p className="text-slate-400 text-sm max-w-xs mx-auto">Connecting to GMAIL to fetch latest conversations with ${selectedPartner.name}...</p>
-                                        <div className="flex justify-center gap-2">
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                                    ) : (
+                                        <div className="space-y-6 animate-fade-in">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Suggested Status</p>
+                                                    <Badge variant="info" className="uppercase font-bold">{aiAnalysis.status}</Badge>
+                                                </div>
+                                                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Summary</p>
+                                                    <p className="text-xs font-medium text-slate-700">{aiAnalysis.summary}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4">
+                                                <p className="text-[10px] font-black text-emerald-600 uppercase mb-2">Proposed Reply</p>
+                                                <p className="text-xs text-slate-700 leading-relaxed font-serif italic mb-4">
+                                                    "{aiAnalysis.proposedReply}"
+                                                </p>
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="outline" className="flex-1 bg-white" onClick={() => navigator.clipboard.writeText(aiAnalysis.proposedReply)}>
+                                                        Copy Reply
+                                                    </Button>
+                                                    <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 border-none" onClick={async () => {
+                                                        if (!db) return;
+                                                        await updateDoc(doc(db, 'partnerships', selectedPartner.id), {
+                                                            status: aiAnalysis.status.toLowerCase(),
+                                                            lastUpdateNote: aiAnalysis.summary,
+                                                            updatedAt: Timestamp.now()
+                                                        });
+                                                        alert('Partner updated successfully!');
+                                                        setAiAnalysis(null);
+                                                        setAiEmailText('');
+                                                    }}>
+                                                        Apply Updates
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-3">
+                                                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <Bot className="w-4 h-4 text-amber-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-amber-700 uppercase">Next Step</p>
+                                                    <p className="text-xs text-amber-800 font-bold">{aiAnalysis.nextAction}</p>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             )}
 
