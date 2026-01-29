@@ -86,6 +86,7 @@ export async function POST(req: Request) {
                 console.log(`[SEED API REST] [${count + 1}/${partnersToImport.length}] Writing: ${partner.name}`);
 
                 const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/partnerships?key=${apiKey}`;
+                console.log(`[SEED API REST] URL: ${url.replace(apiKey || '', 'REDACTED')}`);
 
                 // Map all common fields to Firestore REST string format
                 const fields: any = {};
@@ -121,8 +122,15 @@ export async function POST(req: Request) {
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`[SEED API REST] Error for ${partner.name}:`, errorText);
-                    throw new Error(`REST Error: ${response.status} - ${partner.name}`);
+                    console.error(`[SEED API REST] Error body for ${partner.name}:`, errorText);
+
+                    let errorDetail = errorText;
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorDetail = errorJson.error?.message || errorText;
+                    } catch (e) { }
+
+                    throw new Error(`REST Error: ${response.status} - ${errorDetail}`);
                 }
 
                 count++;
