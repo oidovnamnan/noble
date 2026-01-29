@@ -99,17 +99,22 @@ export default function SeedPartnerships() {
                 body: JSON.stringify({ action: 'seed', schoolNames: selectedSchools })
             });
 
-            const result = await response.json();
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                throw new Error('Server returned an invalid response. Check terminal.');
+            }
 
             if (!response.ok) {
-                throw new Error(result.error || 'Server error during seeding');
+                throw new Error(result.error || `Server Error ${response.status}`);
             }
 
             setProgress(100);
             setStatus(`Success! ${result.message}`);
         } catch (error: any) {
             console.error('[SEED] Error during server-side import:', error);
-            setStatus(`Error: ${error.message || 'Unknown error'}. Check console.`);
+            setStatus(`Error: ${error.message || 'Unknown error'}.`);
         } finally {
             setLoading(false);
         }

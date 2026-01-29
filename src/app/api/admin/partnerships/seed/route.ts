@@ -59,8 +59,14 @@ export async function POST(req: Request) {
             console.log(`[SEED API] Starting import for ${partnersToImport.length} records`);
 
             for (const partner of partnersToImport) {
-                console.log(`[SEED API] Writing: ${partner.name}`);
-                await addDoc(collection(db!, 'partnerships'), {
+                console.log(`[SEED API] [${count + 1}/${partnersToImport.length}] Writing: ${partner.name}`);
+
+                // Add a timeout for each individual write to prevent global hang
+                const recordTimeout = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error(`Timeout writing ${partner.name}`)), 8000)
+                );
+
+                const writeOp = addDoc(collection(db!, 'partnerships'), {
                     ...partner,
                     createdAt: Timestamp.now(),
                     updatedAt: Timestamp.now(),
@@ -71,6 +77,8 @@ export async function POST(req: Request) {
                         updatedBy: 'System'
                     }]
                 });
+
+                await Promise.race([writeOp, recordTimeout]);
                 count++;
             }
             console.log(`[SEED API] Successfully seeded ${count} partners`);
