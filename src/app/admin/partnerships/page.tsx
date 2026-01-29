@@ -59,12 +59,23 @@ export default function PartnershipsPage() {
         const fetchPartnerships = async () => {
             if (!db) return;
             try {
+                // Timeout wrapper for DB fetch
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('timeout')), 5000)
+                );
+
                 const q = query(collection(db, 'partnerships'), orderBy('createdAt', 'desc'));
-                const snapshot = await getDocs(q);
-                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Partnership));
+                const snapshotPromise = getDocs(q);
+
+                const snapshot = await Promise.race([snapshotPromise, timeoutPromise]) as any;
+                const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Partnership));
                 setPartnerships(data);
-            } catch (error) {
-                console.error('Error fetching partnerships:', error);
+            } catch (error: any) {
+                if (error.message === 'timeout') {
+                    console.warn('[DB] Partnership fetch timed out. User might be offline.');
+                } else {
+                    console.error('Error fetching partnerships:', error);
+                }
             } finally {
                 setIsLoading(false);
             }

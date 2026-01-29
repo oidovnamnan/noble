@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
         if (action === 'clear') {
             const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-            const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+            const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'nobleworldgate-e915b';
 
             const listUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/partnerships?key=${apiKey}`;
             const listRes = await fetch(listUrl);
@@ -69,10 +69,10 @@ export async function POST(req: Request) {
 
         if (action === 'seed') {
             const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-            const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+            const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'nobleworldgate-e915b';
 
-            if (!apiKey || !projectId) {
-                return NextResponse.json({ error: 'Missing Firebase configuration on server.' }, { status: 500 });
+            if (!apiKey) {
+                return NextResponse.json({ error: 'Missing Firebase API Key on server.' }, { status: 500 });
             }
 
             let count = 0;

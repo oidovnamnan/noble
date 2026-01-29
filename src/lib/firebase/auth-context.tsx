@@ -39,22 +39,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             try {
                 if (firebaseUser && db) {
-                    // Get additional user data from Firestore
-                    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-                    if (userDoc.exists()) {
-                        const userData = { id: firebaseUser.uid, ...userDoc.data() } as User;
-                        if (firebaseUser.email === 'nobleworldgate@gmail.com') {
-                            userData.role = 'admin';
+                    // Timeout wrapper for DB profile fetch
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('timeout')), 5000)
+                    );
+
+                    try {
+                        // Get additional user data from Firestore with 5s timeout
+                        const userDocPromise = getDoc(doc(db, 'users', firebaseUser.uid));
+                        const userDoc = await Promise.race([userDocPromise, timeoutPromise]) as any;
+
+                        if (userDoc?.exists()) {
+                            const userData = { id: firebaseUser.uid, ...userDoc.data() } as User;
+                            if (firebaseUser.email === 'nobleworldgate@gmail.com') {
+                                userData.role = 'admin';
+                            }
+                            setUser(userData);
+                            setUserState(userData);
+                        } else {
+                            throw new Error('No doc');
                         }
-                        setUser(userData);
-                        setUserState(userData);
-                    } else {
-                        // New user or data not in Firestore yet
+                    } catch (e) {
+                        // DB fail or timeout - silently use fallback data from auth
                         const basicUser: User = {
                             id: firebaseUser.uid,
                             email: firebaseUser.email || '',
-                            firstName: '',
-                            lastName: '',
+                            firstName: firebaseUser.displayName?.split(' ')[0] || 'User',
+                            lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
                             phone: '',
                             role: firebaseUser.email === 'nobleworldgate@gmail.com' ? 'admin' : 'customer',
                             language: 'mn',
@@ -66,35 +77,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setUserState(basicUser);
                     }
                 } else if (firebaseUser) {
-                    // Auth exists but DB doesn't (weird case)
                     setUser({ id: firebaseUser.uid, email: firebaseUser.email || '' } as any);
                 } else {
                     setUser(null);
                     setUserState(null);
                 }
             } catch (error) {
-                console.error('Error fetching user data:', error);
-                // FALLBACK: If Firestore fails (offline/rules), DO NOT logout.
-                // Use basic data from the Auth object.
-                if (firebaseUser) {
-                    const basicUser: User = {
-                        id: firebaseUser.uid,
-                        email: firebaseUser.email || '',
-                        firstName: firebaseUser.displayName?.split(' ')[0] || 'Хэрэглэгч',
-                        lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-                        phone: '',
-                        role: firebaseUser.email === 'nobleworldgate@gmail.com' ? 'admin' : 'customer',
-                        language: 'mn',
-                        notifications: { email: true, push: true, sms: false },
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                    };
-                    setUser(basicUser);
-                    setUserState(basicUser);
-                } else {
-                    setUser(null);
-                    setUserState(null);
-                }
+                // Global edge case error
+                setUser(null);
+                setUserState(null);
             } finally {
                 setLoading(false);
                 setLocalLoading(false);
