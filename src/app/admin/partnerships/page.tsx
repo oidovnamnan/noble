@@ -153,6 +153,33 @@ export default function PartnershipsPage() {
         }
     };
 
+    const handleExportCSV = () => {
+        if (partnerships.length === 0) return;
+
+        const headers = ['Name', 'Country', 'Contact Person', 'Contact Email', 'Status', 'Last Update Note'];
+        const csvContent = [
+            headers.join(','),
+            ...partnerships.map(p => [
+                `"${p.name || ''}"`,
+                `"${p.country || ''}"`,
+                `"${p.contactPerson || ''}"`,
+                `"${p.contactEmail || ''}"`,
+                `"${p.status || ''}"`,
+                `"${(p.lastUpdateNote || '').replace(/"/g, '""')}"`
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `noble_partnerships_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleGenerateLetterhead = (partner: Partnership) => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
@@ -275,7 +302,14 @@ export default function PartnershipsPage() {
                         >
                             Sync all with AI
                         </Button>
-                        <Button variant="outline" size="sm" leftIcon={<Download className={cn("w-4 h-4")} />}>Export CSV</Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            leftIcon={<Download className={cn("w-4 h-4")} />}
+                            onClick={handleExportCSV}
+                        >
+                            Export CSV
+                        </Button>
                         <Button size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsAddModalOpen(true)}>Add Partner</Button>
                     </div>
                 </div>

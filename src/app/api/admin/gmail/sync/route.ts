@@ -7,13 +7,18 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.NEXTAUTH_URL + '/api/admin/gmail/callback'
-);
-
 export async function POST(req: Request) {
+    const { origin } = new URL(req.url);
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectBase = process.env.NEXTAUTH_URL || origin;
+    const redirectUri = `${redirectBase}/api/admin/gmail/callback`;
+
+    if (!clientId || !clientSecret) {
+        return NextResponse.json({ error: 'Google OAuth credentials missing' }, { status: 500 });
+    }
+
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     const cookieStore = await cookies();
     const tokenCookie = cookieStore.get('gmail_tokens');
 
