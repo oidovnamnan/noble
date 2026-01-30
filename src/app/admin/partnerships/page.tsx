@@ -170,6 +170,12 @@ export default function PartnershipsPage() {
                 method: 'POST',
                 body: JSON.stringify({ partners: partnersToSync })
             });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Server Error (${res.status})`);
+            }
+
             const data = await res.json();
             if (data.results && data.results.length > 0) {
                 alert(`${data.results.length} сургуулийн мэдээлэл шинэчлэгдлээ!`);

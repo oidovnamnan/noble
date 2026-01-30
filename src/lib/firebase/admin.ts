@@ -6,10 +6,14 @@ const firebaseConfig = {
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
-if (!admin.apps.length && firebaseConfig.privateKey) {
+if (!admin.apps.length && (process.env.FIREBASE_PRIVATE_KEY || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID)) {
     try {
         admin.initializeApp({
-            credential: admin.credential.cert(firebaseConfig as admin.ServiceAccount),
+            credential: admin.credential.cert({
+                project_id: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+                client_email: process.env.FIREBASE_CLIENT_EMAIL,
+                private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            } as any),
         });
     } catch (error) {
         console.error('Firebase admin initialization error', error);
