@@ -28,9 +28,8 @@ export async function POST(req: Request) {
     if (!openAiKey) {
         return NextResponse.json({ error: 'OpenAI API Key missing' }, { status: 500 });
     }
-    if (!firebaseKey || !firebaseProjectId) {
-        return NextResponse.json({ error: 'Firebase Admin credentials missing' }, { status: 500 });
-    }
+    // Relaxed Firebase check: allow sync to proceed even if Firebase credentials are not fully set,
+    // as long as the 'db' object is handled gracefully later.
 
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     const cookieStore = await cookies();

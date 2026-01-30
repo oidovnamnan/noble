@@ -104,7 +104,7 @@ export default function PartnershipsPage() {
     };
 
     useEffect(() => {
-        // Check if gmail just connected from URL
+        // 1. Check if gmail just connected from URL
         const params = new URLSearchParams(window.location.search);
         if (params.get('gmail') === 'connected') {
             setIsGmailConnected(true);
@@ -114,6 +114,20 @@ export default function PartnershipsPage() {
                 alert('Gmail амжилттай холбогдлоо!');
             }, 100);
         }
+
+        // 2. Initial status check for persistence on refresh
+        const checkStatus = async () => {
+            try {
+                const res = await fetch('/api/admin/gmail/status');
+                const data = await res.json();
+                if (data.authenticated) {
+                    setIsGmailConnected(true);
+                }
+            } catch (e) {
+                console.error('Status check failed', e);
+            }
+        };
+        checkStatus();
     }, []);
 
     const handleConnectGmail = () => {
