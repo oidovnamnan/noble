@@ -284,7 +284,7 @@ export default function PartnershipsPage() {
                         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t('admin.partnerships')}</h1>
                         <p className="text-slate-500 text-sm mt-1 font-medium">Manage international school partnerships and applications</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap md:justify-end">
                         <Button
                             variant="outline"
                             size="sm"
