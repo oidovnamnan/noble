@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import OpenAI from 'openai';
+import { db } from '@/lib/firebase/admin';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -38,7 +39,6 @@ export async function POST(req: Request) {
         for (const partner of partners) {
             if (!partner.contactEmail) continue;
 
-            // Search for messages from this email
             const res = await gmail.users.messages.list({
                 userId: 'me',
                 q: `from:${partner.contactEmail}`,
@@ -53,32 +53,22 @@ export async function POST(req: Request) {
                     format: 'full'
                 });
 
-                // Extract body
                 let body = '';
-                const parts = msg.data.payload?.parts || [];
-                if (parts.length > 0) {
-                    const data = parts.find((p: any) => p.mimeType === 'text/plain')?.body?.data || parts[0].body?.data;
-                    if (data) body = Buffer.from(data, 'base64').toString();
-                } else if (msg.data.payload?.body?.data) {
-                    body = Buffer.from(msg.data.payload.body.data, 'base64').toString();
+                const payload = msg.data.payload;
+                if (payload?.parts) {
+                    const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
+                    if (textPart?.body?.data) {
+                        body = Buffer.from(textPart.body.data, 'base64').toString();
+                    }
+                } else if (payload?.body?.data) {
+                    body = Buffer.from(payload.body.data, 'base64').toString();
                 }
 
                 if (body) {
-                    // Analyze with AI (similar to existing logic but automated)
                     const systemPrompt = `
-            You are an expert admin assistant for Noble Consulting. 
             Analyze the following email from partner ${partner.name}.
-            
-            Detect Correct Status:
-            - prospect, contacted, interested, applying, submitted, under_review, negotiation, contract_sent, active, rejected, dormant, on_hold
-
-            Provide:
-            1. status: Keyword from list.
-            2. summary: 1-2 sentences in Mongolian.
-            3. nextAction: Clear instruction in Mongolian.
-            4. proposedReply: Professional English reply.
-
-            Respond ONLY with JSON.
+            Correct Status List: prospect, contacted, interested, applying, submitted, under_review, negotiation, contract_sent, active, rejected, dormant, on_hold
+            Respond in JSON: { "status": "keyword", "summary": "mn string", "nextAction": "mn string", "proposedReply": "en string" }
           `;
 
                     const aiRes = await openai.chat.completions.create({
@@ -91,6 +81,17 @@ export async function POST(req: Request) {
                     });
 
                     const analysis = JSON.parse(aiRes.choices[0].message.content || '{}');
+
+                    // Save to Firestore
+                    const partnerRef = db.collection('partnerships').doc(partner.id);
+                    await partnerRef.update({
+                        status: analysis.status,
+                        lastUpdateNote: analysis.summary,
+                        nextActionDate: new Date(), // Just for tracking
+                        updatedAt: new Date(),
+                        // Append to emails if needed, but for now just update primary status
+                    });
+
                     results.push({
                         partnerId: partner.id,
                         analysis,

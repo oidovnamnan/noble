@@ -19,7 +19,13 @@ import {
     Bot,
     Mail,
     PanelLeftClose,
-    PanelRightClose
+    PanelRightClose,
+    CheckCircle,
+    Target,
+    AlertCircle,
+    TrendingUp,
+    History,
+    MessageSquare
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -58,6 +64,16 @@ export default function PartnershipsPage() {
         lastUpdateNote: ''
     });
 
+    // Calculate Statistics
+    const stats = {
+        total: partnerships.length,
+        active: partnerships.filter(p => p.status === 'active').length,
+        pending: partnerships.filter(p => ['contacted', 'interested', 'applying', 'submitted', 'under_review'].includes(p.status)).length,
+        successRate: partnerships.length > 0
+            ? Math.round((partnerships.filter(p => p.status === 'active').length / partnerships.length) * 100)
+            : 0
+    };
+
     useEffect(() => {
         // Check if gmail just connected from URL
         const params = new URLSearchParams(window.location.search);
@@ -83,8 +99,12 @@ export default function PartnershipsPage() {
             const data = await res.json();
             if (data.results && data.results.length > 0) {
                 alert(`${data.results.length} сургуулийн мэдээлэл шинэчлэгдлээ!`);
-                // Fast reload or update local state
-                window.location.reload();
+
+                // Refetch data instead of reload
+                const q = query(collection(db!, 'partnerships'), orderBy('createdAt', 'desc'));
+                const snapshot = await getDocs(q);
+                const freshData = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Partnership));
+                setPartnerships(freshData);
             } else {
                 alert('Шинэ имэйл олдсонгүй.');
             }
@@ -314,6 +334,61 @@ export default function PartnershipsPage() {
                     </div>
                 </div>
 
+                {/* Intelligence Dashboard */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card variant="elevated" className="p-5 border-none bg-white relative overflow-hidden group">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                                <Globe className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Нийт түншүүд</p>
+                                <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.total}</h3>
+                            </div>
+                        </div>
+                        <TrendingUp className="absolute right-4 bottom-4 w-12 h-12 text-blue-50/50 -rotate-12" />
+                    </Card>
+
+                    <Card variant="elevated" className="p-5 border-none bg-white relative overflow-hidden group">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                                <CheckCircle className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Баталгаажсан</p>
+                                <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.active}</h3>
+                            </div>
+                        </div>
+                        <CheckCircle className="absolute right-4 bottom-4 w-12 h-12 text-emerald-50/50 -rotate-6" />
+                    </Card>
+
+                    <Card variant="elevated" className="p-5 border-none bg-white relative overflow-hidden group">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-all duration-300">
+                                <Clock className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Явцтай байгаа</p>
+                                <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.pending}</h3>
+                            </div>
+                        </div>
+                        <Target className="absolute right-4 bottom-4 w-12 h-12 text-amber-50/50 rotate-12" />
+                    </Card>
+
+                    <Card variant="elevated" className="p-5 border-none bg-white relative overflow-hidden group">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                                <Bot className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Амжилтын хувь</p>
+                                <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.successRate}%</h3>
+                            </div>
+                        </div>
+                        <TrendingUp className="absolute right-4 bottom-4 w-12 h-12 text-indigo-50/50" />
+                    </Card>
+                </div>
+
                 {/* Filters & Actions */}
                 <Card variant="outlined" className="p-4">
                     <div className="flex flex-col md:flex-row gap-4">
@@ -404,6 +479,25 @@ export default function PartnershipsPage() {
                                     <div className="flex items-start gap-3 text-slate-500">
                                         <Clock className="w-4 h-4 mt-0.5" />
                                         <span className="text-sm font-medium line-clamp-2">{partner.lastUpdateNote || 'No recent updates'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="mt-6">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
+                                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                                            {partner.status === 'active' ? '100%' : partner.status === 'prospect' ? '10%' : '45%'}
+                                        </span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={cn(
+                                                "h-full transition-all duration-1000 ease-out",
+                                                partner.status === 'active' ? "bg-emerald-500 w-full" :
+                                                    partner.status === 'rejected' ? "bg-red-400 w-full" : "bg-blue-500 w-[45%]"
+                                            )}
+                                        />
                                     </div>
                                 </div>
 
@@ -640,6 +734,23 @@ export default function PartnershipsPage() {
                                                 </div>
                                             </div>
                                         </section>
+
+                                        {/* Next Action Priority */}
+                                        <section className="bg-blue-600 rounded-[32px] p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Target className="w-4 h-4 text-blue-200" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-100">AI Priority Action</span>
+                                                </div>
+                                                <h4 className="font-bold text-lg mb-1">Имэйл шалгах</h4>
+                                                <p className="text-xs text-blue-100 leading-relaxed">
+                                                    Энэ сургуулиас хариу ирсэн байх магадлалтай. Gmail-ээ синхрончлоод бодит төлөвийг харна уу.
+                                                </p>
+                                            </div>
+                                            <div className="absolute -right-8 -bottom-8 opacity-10 rotate-12">
+                                                <Bot className="w-32 h-32 text-white" />
+                                            </div>
+                                        </section>
                                     </div>
                                     <div className="space-y-6">
                                         <section>
@@ -794,6 +905,42 @@ export default function PartnershipsPage() {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Communication History Timeline */}
+                                    <div className="bg-slate-50/50 rounded-[32px] p-8 mt-12">
+                                        <div className="flex items-center gap-3 mb-8">
+                                            <History className="w-5 h-5 text-slate-400" />
+                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest font-bold">Communication Timeline</h4>
+                                        </div>
+
+                                        <div className="space-y-8 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
+                                            <div className="relative pl-12">
+                                                <div className="absolute left-3 top-2 w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-50" />
+                                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-[10px] font-black text-blue-600 uppercase">Latest Update</span>
+                                                        <span className="text-[10px] font-bold text-slate-400">Өнөөдөр</span>
+                                                    </div>
+                                                    <p className="text-sm text-slate-700 font-bold leading-relaxed">
+                                                        {selectedPartner.lastUpdateNote || 'Системд бүртгэгдсэн.'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="relative pl-12 opacity-50">
+                                                <div className="absolute left-3 top-2 w-2 h-2 rounded-full bg-slate-300" />
+                                                <div className="bg-white/50 rounded-2xl p-5 border border-slate-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase">Status Initialized</span>
+                                                        <span className="text-[10px] font-bold text-slate-300">Бүртгэсэн үед</span>
+                                                    </div>
+                                                    <p className="text-sm text-slate-500">
+                                                        Сургуулийн үндсэн мэдээллийг системд нэмсэн.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -819,6 +966,6 @@ export default function PartnershipsPage() {
                     </div>
                 )}
             </Modal>
-        </AdminLayout >
+        </AdminLayout>
     );
 }
