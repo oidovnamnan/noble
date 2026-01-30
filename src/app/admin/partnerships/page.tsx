@@ -192,19 +192,41 @@ export default function PartnershipsPage() {
 
             const data = await res.json();
             if (data.results && data.results.length > 0) {
-                alert(`${data.results.length} сургуулийн мэдээлэл шинэчлэгдлээ!`);
+                const processed = data.processedCount || data.results.filter((r: any) => r.success).length;
+                alert(`${processed} сургуулийн мэдээлэл шинэчлэгдлээ!`);
 
-                // Refetch data instead of reload
+                // Update Local State Immediately from Results
+                setPartnerships(prev => prev.map(p => {
+                    const result = data.results.find((r: any) => r.partnerId === p.id);
+                    if (result && result.success) {
+                        return {
+                            ...p,
+                            emails: result.emails || p.emails,
+                            status: result.analysis?.status || p.status,
+                            lastUpdateNote: result.analysis?.summary || p.lastUpdateNote
+                        };
+                    }
+                    return p;
+                }));
+
+                // If selected partner was synced, update it in UI immediately
+                if (selectedPartner) {
+                    const syncResult = data.results.find((r: any) => r.partnerId === selectedPartner.id);
+                    if (syncResult && syncResult.success) {
+                        setSelectedPartner(prev => prev ? ({
+                            ...prev,
+                            emails: syncResult.emails || prev.emails,
+                            status: syncResult.analysis?.status || prev.status,
+                            lastUpdateNote: syncResult.analysis?.summary || prev.lastUpdateNote
+                        }) : null);
+                    }
+                }
+
+                // Follow up: Still refetch from DB to ensure sync with other clients
                 const q = query(collection(db!, 'partnerships'), orderBy('createdAt', 'desc'));
                 const snapshot = await getDocs(q);
                 const freshData = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Partnership));
                 setPartnerships(freshData);
-
-                // Update selected partner if open
-                if (selectedPartner) {
-                    const updated = freshData.find(p => p.id === selectedPartner.id);
-                    if (updated) setSelectedPartner(updated);
-                }
             } else {
                 alert('Шинэ имэйл олдсонгүй.');
             }

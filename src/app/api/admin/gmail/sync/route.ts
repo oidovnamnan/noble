@@ -59,21 +59,28 @@ export async function POST(req: Request) {
                 const email = partner.contactEmail?.trim();
                 if (!email) continue;
 
-                console.log(`[SYNC] Searching Gmail for: "${email}"`);
+                console.log(`[SYNC] Searching Gmail for: ${email}`);
 
-                // Fetch last 5 messages - limited for stability and speed
+                // Fetch last 10 messages - broader search (removed quotes for better matching)
                 const listRes = await gmail.users.messages.list({
                     userId: 'me',
-                    q: `"${email}"`,
-                    maxResults: 5
+                    q: email,
+                    maxResults: 10
                 });
 
                 const messages = listRes.data.messages || [];
                 if (messages.length === 0) {
                     console.log(`[SYNC] No messages found for ${email}`);
+                    syncResults.push({
+                        partnerId: partner.id,
+                        success: true,
+                        emailsCount: 0,
+                        emails: []
+                    });
                     continue;
                 }
 
+                console.log(`[SYNC] Found ${messages.length} messages for ${email}. Fetching details...`);
                 const fetchedEmails = [];
                 let fullThreadContent = "";
 
@@ -103,6 +110,8 @@ export async function POST(req: Request) {
                     fullThreadContent += `From: ${from}\nDate: ${date}\nContent: ${snippet}\n---\n`;
                 }
 
+                const sortedEmails = fetchedEmails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
                 console.log(`[SYNC] Analyzing with AI for ${partner.name}`);
 
                 // Analyze the whole conversation state
@@ -110,14 +119,11 @@ export async function POST(req: Request) {
                     Analyze the following email conversation with partner ${partner.name}.
                     Goal: Determine current relationship status and provide a summary of the latest state.
                     
-                    Correct Status List: prospect, contacted, interested, applying, submitted, under_review, negotiation, contract_sent, active, rejected, dormant, on_hold
-                    
                     Respond in JSON ONLY: 
                     { 
                       "status": "keyword", 
                       "summary": "1-2 sentences in Mongolian summarizing the whole conversation", 
-                      "nextAction": "mn string explaining what to do next", 
-                      "proposedReply": "a professional email reply in English" 
+                      "nextAction": "mn string"
                     }
                 `;
 
@@ -139,16 +145,19 @@ export async function POST(req: Request) {
                         status: analysis.status || partner.status || 'contacted',
                         lastUpdateNote: analysis.summary,
                         updatedAt: new Date(),
-                        emails: fetchedEmails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        emails: sortedEmails
                     });
+                    console.log(`[SYNC] Firestore updated success for ${partner.name}`);
                 } else {
-                    console.warn('[SYNC] Firestore db not initialized, skipping update');
+                    console.warn('[SYNC] Firestore db not initialized for update');
                 }
 
                 syncResults.push({
                     partnerId: partner.id,
                     success: true,
-                    emailsCount: fetchedEmails.length
+                    emailsCount: sortedEmails.length,
+                    emails: sortedEmails,
+                    analysis
                 });
 
             } catch (err: any) {
