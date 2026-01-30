@@ -17,29 +17,38 @@ export async function POST(req: Request) {
     const redirectBase = process.env.NEXTAUTH_URL || origin;
     const redirectUri = `${redirectBase}/api/admin/gmail/callback`;
 
+    const openAiKey = process.env.OPENAI_API_KEY;
+    const firebaseKey = process.env.FIREBASE_PRIVATE_KEY;
+    const firebaseEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
     if (!clientId || !clientSecret) {
         return NextResponse.json({ error: 'Google OAuth credentials missing' }, { status: 500 });
+    }
+    if (!openAiKey) {
+        return NextResponse.json({ error: 'OpenAI API Key missing' }, { status: 500 });
+    }
+    if (!firebaseKey || !firebaseProjectId) {
+        return NextResponse.json({ error: 'Firebase Admin credentials missing' }, { status: 500 });
     }
 
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     const cookieStore = await cookies();
     const tokenCookie = cookieStore.get('gmail_tokens');
 
-    if (!tokenCookie) {
-        return NextResponse.json({ error: 'Not authenticated with Gmail' }, { status: 401 });
-    }
-
     try {
         if (!tokenCookie) {
-            return NextResponse.json({ error: 'Not authenticated with Gmail. Please connect Gmail first.' }, { status: 401 });
+            return NextResponse.json({ error: 'Not authenticated with Gmail. Please click "Connect Gmail" first.' }, { status: 401 });
         }
 
         const tokens = JSON.parse(tokenCookie.value);
         oauth2Client.setCredentials(tokens);
 
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-        const { partners } = await req.json();
+        const body = await req.json();
+        const partners = body.partners;
 
+        console.log(`[SYNC] Starting sync for ${partners?.length || 0} partners`);
         const syncResults = [];
 
         if (!partners || !Array.isArray(partners)) {
@@ -51,13 +60,13 @@ export async function POST(req: Request) {
                 const email = partner.contactEmail?.trim();
                 if (!email) continue;
 
-                console.log(`[SYNC] Processing search for: ${email}`);
+                console.log(`[SYNC] Searching Gmail for: "${email}"`);
 
-                // Fetch last 10 messages - balanced for speed and history
+                // Fetch last 5 messages - limited for stability and speed
                 const listRes = await gmail.users.messages.list({
                     userId: 'me',
-                    q: email,
-                    maxResults: 10
+                    q: `"${email}"`,
+                    maxResults: 5
                 });
 
                 const messages = listRes.data.messages || [];
