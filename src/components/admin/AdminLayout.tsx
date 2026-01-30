@@ -37,14 +37,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     if (!isAuthenticated || user?.role !== 'admin') return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
+        <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
             {/* Sidebar */}
             <AdminSidebar />
 
             {/* Main Content Area */}
             <div
                 className={cn(
-                    "flex-1 flex flex-col transition-all duration-300",
+                    "flex-1 flex flex-col transition-all duration-300 min-w-0 overflow-x-hidden",
                     sidebarOpen ? "pl-64" : "pl-20"
                 )}
             >
@@ -89,7 +89,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </header>
 
                 {/* Page Content */}
-                <main className="p-8">
+                <main className="p-4 sm:p-8">
                     {children}
                 </main>
             </div>
