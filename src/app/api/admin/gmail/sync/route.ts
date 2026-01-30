@@ -69,19 +69,6 @@ export async function POST(req: Request) {
         for (const partner of partners) {
             try {
                 const email = partner.contactEmail?.trim();
-                if (!email) {
-                    console.log(`[SYNC] Skipping ${partner.name} - no email`);
-                    continue;
-                }
-
-                console.log(`[SYNC] Searching for partner: ${partner.name} (${email})`);
-
-                // Try three search variants to be absolutely sure
-                const queries = [
-                    `from:${email} OR to:${email}`,
-                    email,
-                    `"${email}"`
-                ];
                 const name = partner.name?.trim();
                 if (!email && !name) {
                     console.log(`[SYNC] Skipping ${partner.name} - no email or name`);
