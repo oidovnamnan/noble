@@ -44,10 +44,22 @@ export async function POST(req: Request) {
         oauth2Client.setCredentials(tokens);
 
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+        // --- DIAGNOSTIC: Check who is authenticated ---
+        let authEmail = "unknown";
+        try {
+            const profile = await gmail.users.getProfile({ userId: 'me' });
+            authEmail = profile.data.emailAddress || "unknown";
+            console.log(`[SYNC] Authenticated as: ${authEmail}`);
+        } catch (authErr: any) {
+            console.error('[SYNC] Auth Check Failed:', authErr.message);
+            return NextResponse.json({ error: `Gmail Auth failed: ${authErr.message}` }, { status: 401 });
+        }
+
         const body = await req.json();
         const partners = body.partners;
 
-        console.log(`[SYNC] Starting sync for ${partners?.length || 0} partners`);
+        console.log(`[SYNC] Starting sync for ${partners?.length || 0} partners from account: ${authEmail}`);
         const syncResults = [];
 
         if (!partners || !Array.isArray(partners)) {
@@ -57,30 +69,58 @@ export async function POST(req: Request) {
         for (const partner of partners) {
             try {
                 const email = partner.contactEmail?.trim();
-                if (!email) continue;
-
-                console.log(`[SYNC] Searching Gmail for: ${email}`);
-
-                // Fetch last 10 messages - broader search (removed quotes for better matching)
-                const listRes = await gmail.users.messages.list({
-                    userId: 'me',
-                    q: email,
-                    maxResults: 10
-                });
-
-                const messages = listRes.data.messages || [];
-                if (messages.length === 0) {
-                    console.log(`[SYNC] No messages found for ${email}`);
-                    syncResults.push({
-                        partnerId: partner.id,
-                        success: true,
-                        emailsCount: 0,
-                        emails: []
-                    });
+                if (!email) {
+                    console.log(`[SYNC] Skipping ${partner.name} - no email`);
                     continue;
                 }
 
-                console.log(`[SYNC] Found ${messages.length} messages for ${email}. Fetching details...`);
+                console.log(`[SYNC] Searching for partner: ${partner.name} (${email})`);
+
+                // Try three search variants to be absolutely sure
+                const queries = [
+                    `from:${email} OR to:${email}`,
+                    email,
+                    `"${email}"`
+                ];
+                const name = partner.name?.trim();
+                if (!email && !name) {
+                    console.log(`[SYNC] Skipping ${partner.name} - no email or name`);
+                    continue;
+                }
+
+                console.log(`[SYNC] Processing partner: ${name} (${email || 'no email'})`);
+
+                // Multi-query strategy for maximum coverage
+                const queries = [];
+                if (email) {
+                    queries.push(`from:${email} OR to:${email}`);
+                    queries.push(`"${email}"`);
+                }
+                if (name) {
+                    queries.push(`"${name}"`);
+                }
+
+                let messages: any[] = [];
+                for (const q of queries) {
+                    const listRes = await gmail.users.messages.list({
+                        userId: 'me',
+                        q: q,
+                        maxResults: 15
+                    });
+                    if (listRes.data.messages && listRes.data.messages.length > 0) {
+                        messages = listRes.data.messages;
+                        console.log(`[SYNC] Found ${messages.length} messages using query: ${q}`);
+                        break;
+                    }
+                }
+
+                if (messages.length === 0) {
+                    console.log(`[SYNC] No messages found for ${name}`);
+                    syncResults.push({ partnerId: partner.id, success: true, emailsCount: 0, emails: [], note: `No emails found for ${email || name}` });
+                    continue;
+                }
+
+                console.log(`[SYNC] Found ${messages.length} messages for ${email || name}. Fetching details...`);
                 const fetchedEmails = [];
                 let fullThreadContent = "";
 
@@ -104,7 +144,7 @@ export async function POST(req: Request) {
                         snippet,
                         from,
                         date: new Date(date).toISOString(),
-                        isInbound: from.toLowerCase().includes(email.toLowerCase())
+                        isInbound: email ? from.toLowerCase().includes(email.toLowerCase()) : true
                     });
 
                     fullThreadContent += `From: ${from}\nDate: ${date}\nContent: ${snippet}\n---\n`;
@@ -114,25 +154,11 @@ export async function POST(req: Request) {
 
                 console.log(`[SYNC] Analyzing with AI for ${partner.name}`);
 
-                // Analyze the whole conversation state
-                const systemPrompt = `
-                    Analyze the following email conversation with partner ${partner.name}.
-                    Goal: Determine current relationship status and provide a summary of the latest state.
-                    
-                    Respond in JSON ONLY: 
-                    { 
-                      "status": "keyword", 
-                      "summary": "1-2 sentences in Mongolian summarizing the whole conversation", 
-                      "nextAction": "mn string"
-                    }
-                `;
-
+                // Analyze with AI
+                const systemPrompt = `Analyze email history for ${name}. Respond in JSON ONLY: { "status": "keyword", "summary": "1-2 sentences in Mongolian summarizing state", "nextAction": "mn string" }`;
                 const aiRes = await openai.chat.completions.create({
                     model: "gpt-4o",
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: `Conversation History:\n${fullThreadContent}` }
-                    ],
+                    messages: [{ role: "system", content: systemPrompt }, { role: "user", content: fullThreadContent }],
                     response_format: { type: "json_object" }
                 });
 
@@ -140,8 +166,7 @@ export async function POST(req: Request) {
 
                 // Save to Firestore - ensure db is available
                 if (db) {
-                    const partnerRef = db.collection('partnerships').doc(partner.id);
-                    await partnerRef.update({
+                    await db.collection('partnerships').doc(partner.id).update({
                         status: analysis.status || partner.status || 'contacted',
                         lastUpdateNote: analysis.summary,
                         updatedAt: new Date(),
@@ -162,11 +187,7 @@ export async function POST(req: Request) {
 
             } catch (err: any) {
                 console.error(`[SYNC] Failed for partner ${partner.name}:`, err.message);
-                syncResults.push({
-                    partnerId: partner.id,
-                    success: false,
-                    error: err.message
-                });
+                syncResults.push({ partnerId: partner.id, success: false, error: err.message });
             }
         }
 

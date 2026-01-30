@@ -18,6 +18,7 @@ import {
     RefreshCw,
     Bot,
     Mail,
+    LogOut,
     PanelLeftClose,
     PanelRightClose,
     CheckCircle,
@@ -82,6 +83,7 @@ export default function PartnershipsPage() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [aiAnalysis, setAiAnalysis] = useState<any>(null);
     const [isGmailConnected, setIsGmailConnected] = useState(false);
+    const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
 
     // New partner form state
     const [newPartnerData, setNewPartnerData] = useState({
@@ -122,6 +124,7 @@ export default function PartnershipsPage() {
                 const data = await res.json();
                 if (data.authenticated) {
                     setIsGmailConnected(true);
+                    setConnectedEmail(data.email || null);
                 }
             } catch (e) {
                 console.error('Status check failed', e);
@@ -129,6 +132,17 @@ export default function PartnershipsPage() {
         };
         checkStatus();
     }, []);
+
+    const handleLogoutGmail = async () => {
+        if (!confirm('Gmail холболтоо салгах уу?')) return;
+        try {
+            await fetch('/api/admin/gmail/logout', { method: 'POST' });
+            setIsGmailConnected(false);
+            setConnectedEmail(null);
+        } catch (e) {
+            alert('Салгахад алдаа гарлаа.');
+        }
+    };
 
     const handleConnectGmail = () => {
         window.location.href = '/api/admin/gmail/auth';
@@ -193,15 +207,14 @@ export default function PartnershipsPage() {
             const data = await res.json();
             if (data.results && data.results.length > 0) {
                 const processed = data.processedCount || data.results.filter((r: any) => r.success).length;
-                alert(`${processed} сургуулийн мэдээлэл шинэчлэгдлээ!`);
 
-                // Update Local State Immediately from Results
+                // Update Local State IMMEDIATELY from API Results
                 setPartnerships(prev => prev.map(p => {
                     const result = data.results.find((r: any) => r.partnerId === p.id);
                     if (result && result.success) {
                         return {
                             ...p,
-                            emails: result.emails || p.emails,
+                            emails: result.emails ?? p.emails,
                             status: result.analysis?.status || p.status,
                             lastUpdateNote: result.analysis?.summary || p.lastUpdateNote
                         };
@@ -209,20 +222,22 @@ export default function PartnershipsPage() {
                     return p;
                 }));
 
-                // If selected partner was synced, update it in UI immediately
+                // Update selected partner if open
                 if (selectedPartner) {
                     const syncResult = data.results.find((r: any) => r.partnerId === selectedPartner.id);
                     if (syncResult && syncResult.success) {
                         setSelectedPartner(prev => prev ? ({
                             ...prev,
-                            emails: syncResult.emails || prev.emails,
+                            emails: syncResult.emails ?? prev.emails,
                             status: syncResult.analysis?.status || prev.status,
                             lastUpdateNote: syncResult.analysis?.summary || prev.lastUpdateNote
                         }) : null);
                     }
                 }
 
-                // Follow up: Still refetch from DB to ensure sync with other clients
+                alert(`${processed} сургуулийн мэдээлэл шинэчлэгдлээ!`);
+
+                // Background Refetch for consistency
                 const q = query(collection(db!, 'partnerships'), orderBy('createdAt', 'desc'));
                 const snapshot = await getDocs(q);
                 const freshData = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Partnership));
@@ -648,6 +663,34 @@ export default function PartnershipsPage() {
                                         >
                                             <FileText className="w-4 h-4" />
                                         </Button>
+                                        <div className="flex flex-col gap-1">
+                                            <Button
+                                                variant={isGmailConnected ? "outline" : "primary"}
+                                                size="sm"
+                                                className={cn(
+                                                    "h-11 px-6 rounded-2xl font-bold transition-all duration-300",
+                                                    isGmailConnected ? "border-emerald-100 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-50" : "shadow-lg shadow-blue-200"
+                                                )}
+                                                onClick={handleConnectGmail}
+                                            >
+                                                <Mail className={cn("w-4 h-4 mr-2", !isGmailConnected && "animate-pulse")} />
+                                                {isGmailConnected ? 'Gmail Холбогдсон' : 'Connect Gmail'}
+                                            </Button>
+                                            {isGmailConnected && connectedEmail && (
+                                                <div className="flex items-center justify-between px-2">
+                                                    <span className="text-[10px] font-mono text-slate-400 truncate max-w-[120px]">
+                                                        {connectedEmail}
+                                                    </span>
+                                                    <button
+                                                        onClick={handleLogoutGmail}
+                                                        className="p-1 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
+                                                        title="Disconnect"
+                                                    >
+                                                        <LogOut className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         <Button variant="outline" size="sm" className="w-8 h-8 rounded-lg p-0" onClick={(e) => e.stopPropagation()}>
                                             <ArrowUpRight className="w-4 h-4" />
                                         </Button>
