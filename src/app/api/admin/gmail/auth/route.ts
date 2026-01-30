@@ -23,7 +23,8 @@ export async function GET(req: Request) {
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
     const scopes = [
-        'https://www.googleapis.com/auth/gmail.readonly'
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/userinfo.email'
     ];
 
     const url = oauth2Client.generateAuthUrl({

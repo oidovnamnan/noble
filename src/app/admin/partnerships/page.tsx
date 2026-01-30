@@ -239,7 +239,7 @@ export default function PartnershipsPage() {
                 if (data.error) {
                     alert(`Алдаа: ${data.error}`);
                 } else {
-                    alert(`${foundCount} / ${totalCount} сургуулийн шинэ имэйлүүд олдлоо.`);
+                    alert(`${data.authEmail || 'Мэдэгдэхгүй'} хаягаас ${foundCount} / ${totalCount} сургуулийн шинэ имэйлүүд олдлоо.`);
                 }
 
                 // Log failures specifically
@@ -454,22 +454,40 @@ export default function PartnershipsPage() {
                         <p className="text-slate-500 text-sm mt-1 font-medium">Manage international school partnerships and applications</p>
                     </div>
                     <div className="flex items-center gap-3 flex-wrap md:justify-end">
+                        {isGmailConnected ? (
+                            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-1.5 shadow-sm">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none">Gmail Connected as</span>
+                                    <span className="text-xs font-mono text-emerald-800 font-bold">{connectedEmail || 'Authenticated'}</span>
+                                </div>
+                                <button
+                                    onClick={handleLogoutGmail}
+                                    className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                                    title="Disconnect"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                leftIcon={<Mail className="w-4 h-4" />}
+                                onClick={handleConnectGmail}
+                                className="shadow-lg shadow-blue-100"
+                            >
+                                Connect Gmail
+                            </Button>
+                        )}
                         <Button
-                            variant="outline"
-                            size="sm"
-                            leftIcon={<Mail className={cn("w-4 h-4", isSyncing && "animate-spin")} />}
-                            onClick={handleConnectGmail}
-                        >
-                            {isGmailConnected ? 'Gmail Connected' : 'Connect Gmail'}
-                        </Button>
-                        <Button
-                            variant="secondary"
+                            variant="primary"
                             size="sm"
                             disabled={isSyncing}
                             leftIcon={<RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />}
                             onClick={handleSyncAll}
+                            className="shadow-lg shadow-blue-200"
                         >
-                            Sync all with AI
+                            Sync with AI
                         </Button>
                         <Button
                             variant="outline"
@@ -674,34 +692,12 @@ export default function PartnershipsPage() {
                                         >
                                             <FileText className="w-4 h-4" />
                                         </Button>
-                                        <div className="flex flex-col gap-1">
-                                            <Button
-                                                variant={isGmailConnected ? "outline" : "primary"}
-                                                size="sm"
-                                                className={cn(
-                                                    "h-11 px-6 rounded-2xl font-bold transition-all duration-300",
-                                                    isGmailConnected ? "border-emerald-100 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-50" : "shadow-lg shadow-blue-200"
-                                                )}
-                                                onClick={handleConnectGmail}
-                                            >
-                                                <Mail className={cn("w-4 h-4 mr-2", !isGmailConnected && "animate-pulse")} />
-                                                {isGmailConnected ? 'Gmail Холбогдсон' : 'Connect Gmail'}
-                                            </Button>
-                                            {isGmailConnected && connectedEmail && (
-                                                <div className="flex items-center justify-between px-2">
-                                                    <span className="text-[10px] font-mono text-slate-400 truncate max-w-[120px]">
-                                                        {connectedEmail}
-                                                    </span>
-                                                    <button
-                                                        onClick={handleLogoutGmail}
-                                                        className="p-1 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
-                                                        title="Disconnect"
-                                                    >
-                                                        <LogOut className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <Button variant="outline" size="sm" className="w-8 h-8 rounded-lg p-0" onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSendEmail(partner);
+                                        }}>
+                                            <Mail className="w-4 h-4" />
+                                        </Button>
                                         <Button variant="outline" size="sm" className="w-8 h-8 rounded-lg p-0" onClick={(e) => e.stopPropagation()}>
                                             <ArrowUpRight className="w-4 h-4" />
                                         </Button>
