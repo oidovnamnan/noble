@@ -160,7 +160,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
             success: true,
             results: syncResults,
-            processedCount: syncResults.filter(r => r.success && r.emailsCount > 0).length
+            processedCount: syncResults.filter((r: any) => r.success && (r.emailsCount || 0) > 0).length
         });
 
     } catch (error: any) {
