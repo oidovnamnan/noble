@@ -80,6 +80,8 @@ export default function PartnershipsPage() {
         if (params.get('gmail') === 'connected') {
             setIsGmailConnected(true);
             alert('Gmail амжилттай холбогдлоо!');
+            // Clear URL to prevent alert on refresh
+            window.history.replaceState({}, '', window.location.pathname);
         }
     }, []);
 
@@ -105,6 +107,12 @@ export default function PartnershipsPage() {
                 const snapshot = await getDocs(q);
                 const freshData = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Partnership));
                 setPartnerships(freshData);
+
+                // Update selected partner if open
+                if (selectedPartner) {
+                    const updated = freshData.find(p => p.id === selectedPartner.id);
+                    if (updated) setSelectedPartner(updated);
+                }
             } else {
                 alert('Шинэ имэйл олдсонгүй.');
             }
@@ -914,31 +922,40 @@ export default function PartnershipsPage() {
                                         </div>
 
                                         <div className="space-y-8 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
-                                            <div className="relative pl-12">
-                                                <div className="absolute left-3 top-2 w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-50" />
-                                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-[10px] font-black text-blue-600 uppercase">Latest Update</span>
-                                                        <span className="text-[10px] font-bold text-slate-400">Өнөөдөр</span>
+                                            {selectedPartner.emails && selectedPartner.emails.length > 0 ? (
+                                                selectedPartner.emails.map((email: any, idx: number) => (
+                                                    <div key={email.id || idx} className="relative pl-12">
+                                                        <div className={cn(
+                                                            "absolute left-3 top-2 w-2 h-2 rounded-full ring-4",
+                                                            email.isInbound ? "bg-blue-600 ring-blue-50" : "bg-emerald-500 ring-emerald-50"
+                                                        )} />
+                                                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 group hover:border-blue-200 transition-all">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <span className={cn(
+                                                                    "text-[10px] font-black uppercase tracking-widest",
+                                                                    email.isInbound ? "text-blue-600" : "text-emerald-600"
+                                                                )}>
+                                                                    {email.isInbound ? 'Inbound Email' : 'Outbound Email'}
+                                                                </span>
+                                                                <span className="text-[10px] font-bold text-slate-400">
+                                                                    {new Date(email.date).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <h5 className="text-sm font-bold text-slate-900 mb-1 line-clamp-1">{email.subject}</h5>
+                                                            <p className="text-sm text-slate-600 leading-relaxed line-clamp-2">
+                                                                {email.snippet}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-sm text-slate-700 font-bold leading-relaxed">
-                                                        {selectedPartner.lastUpdateNote || 'Системд бүртгэгдсэн.'}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="relative pl-12 opacity-50">
-                                                <div className="absolute left-3 top-2 w-2 h-2 rounded-full bg-slate-300" />
-                                                <div className="bg-white/50 rounded-2xl p-5 border border-slate-100">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase">Status Initialized</span>
-                                                        <span className="text-[10px] font-bold text-slate-300">Бүртгэсэн үед</span>
+                                                ))
+                                            ) : (
+                                                <div className="relative pl-12">
+                                                    <div className="absolute left-3 top-2 w-2 h-2 rounded-full bg-slate-200" />
+                                                    <div className="bg-white/50 rounded-2xl p-5 border border-slate-100">
+                                                        <p className="text-sm text-slate-400 italic">Имэйл болон харилцааны түүх одоогоор байхгүй байна. Sync товчийг дарж шинэчилнэ үү.</p>
                                                     </div>
-                                                    <p className="text-sm text-slate-500">
-                                                        Сургуулийн үндсэн мэдээллийг системд нэмсэн.
-                                                    </p>
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
