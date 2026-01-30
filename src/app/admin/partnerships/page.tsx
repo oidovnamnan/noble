@@ -31,12 +31,41 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
 import { db } from '@/lib/firebase/config';
-import { collection, query, getDocs, orderBy, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { Partnership } from '@/types';
 import { Loader2 } from 'lucide-react';
 
 import { Modal, Input, Select, Textarea } from '@/components/ui';
 import { addDoc, Timestamp } from 'firebase/firestore';
+
+const EMAILS_MAP: Record<string, string> = {
+    'Simon Fraser University (SFU)': 'partners@sfu.ca',
+    'University of Auckland': 'int-marketing@auckland.ac.nz',
+    'University of Canterbury': 'international@canterbury.ac.nz',
+    'Lincoln University': 'international@lincoln.ac.nz',
+    'IPU New Zealand': 'recruitment@ipu.ac.nz',
+    'NZLC (Language Centres)': 'amandaw@nzlc.ac.nz',
+    'Languages International': 'brett@languages.ac.nz',
+    'Education Planner': 'anna@educationplanner.ca',
+    'Toronto Metropolitan University (TMU)': 'international@torontomu.ca',
+    'Vancouver Island University (VIU)': 'worldviu@viu.ca',
+    'Niagara College Canada': 'international@niagaracollege.ca',
+    'George Brown College': 'international@georgebrown.ca',
+    'English Teaching College (ETC)': 'peggy@etc.ac.nz',
+    'University of Manitoba': 'international@umanitoba.ca',
+    'University Canada West (UCW)': 'international@ucanwest.ca',
+    'McMaster University': 'international@mcmaster.ca',
+    'Red River College Polytechnic': 'international@rrc.ca',
+    'Sault College': 'international@saultcollege.ca',
+    'Canadore College': 'agent.relations@canadorecollege.ca',
+    'University of Otago': 'international.marketing@otago.ac.nz',
+    'Otago Polytechnic': 'cameron.james-pirie@op.ac.nz',
+    'Fanshawe College': 'international@fanshawec.ca',
+    'Algoma University': 'international@algomau.ca',
+    'Centennial College': 'seasia@centennialcollege.ca',
+    'AUT New Zealand': 'international.agents@aut.ac.nz',
+    'University of Waikato': 'partnership.enquiries@waikato.ac.nz'
+};
 
 export default function PartnershipsPage() {
     const { t } = useTranslation();
@@ -94,18 +123,42 @@ export default function PartnershipsPage() {
     const handleSyncAll = async () => {
         setIsSyncing(true);
         try {
-            // Filter and clean partners for sync
-            const partnersToSync = partnerships.map(p => {
+            // Proactively Fill Missing Emails in Firestore
+            console.log('[SYNC] Checking for missing emails...');
+            const partnersToSync = [];
+
+            for (const p of partnerships) {
                 let email = p.contactEmail?.trim() || '';
 
-                // Fallback: Try to extract email from contactPerson if it contains one
+                // 1. If missing, look in manual map
+                if (!email && EMAILS_MAP[p.name]) {
+                    email = EMAILS_MAP[p.name];
+                    console.log(`[SYNC] Found email for ${p.name} in map: ${email}`);
+                }
+
+                // 2. Fallback: Try to extract email from contactPerson if it contains one
                 if (!email && p.contactPerson?.includes('@')) {
                     const match = p.contactPerson.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/);
                     if (match) email = match[1];
                 }
 
-                return { id: p.id, name: p.name, contactEmail: email };
-            }).filter(p => !!p.contactEmail);
+                if (email) {
+                    // Update Firestore if it was missing or changed
+                    if (p.contactEmail !== email) {
+                        try {
+                            const partnerRef = doc(db!, 'partnerships', p.id);
+                            await updateDoc(partnerRef, {
+                                contactEmail: email,
+                                updatedAt: serverTimestamp()
+                            });
+                            p.contactEmail = email; // Update local state for the immediate sync
+                        } catch (err) {
+                            console.error(`Failed to update email for ${p.name}`, err);
+                        }
+                    }
+                    partnersToSync.push({ id: p.id, name: p.name, contactEmail: email });
+                }
+            }
 
             if (partnersToSync.length === 0) {
                 alert('Синхрончлох боломжтой имэйл хаягтай партнер олдсонгүй. Партнерын мэдээлэлд имэйл хаягийг нь оруулна уу.');
@@ -136,6 +189,7 @@ export default function PartnershipsPage() {
                 alert('Шинэ имэйл олдсонгүй.');
             }
         } catch (e) {
+            console.error('Sync error:', e);
             alert('Sync failed. Please connect Gmail again.');
         } finally {
             setIsSyncing(false);
