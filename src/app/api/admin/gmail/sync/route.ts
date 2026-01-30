@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import OpenAI from 'openai';
 import { db } from '@/lib/firebase/admin';
 
+export const dynamic = 'force-dynamic';
+
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
