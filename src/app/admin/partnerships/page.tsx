@@ -206,7 +206,8 @@ export default function PartnershipsPage() {
 
             const data = await res.json();
             if (data.results && data.results.length > 0) {
-                const processed = data.processedCount || data.results.filter((r: any) => r.success).length;
+                const foundCount = data.results.filter((r: any) => r.success && r.emailsCount > 0).length;
+                const totalCount = data.results.length;
 
                 // Update Local State IMMEDIATELY from API Results
                 setPartnerships(prev => prev.map(p => {
@@ -235,7 +236,17 @@ export default function PartnershipsPage() {
                     }
                 }
 
-                alert(`${processed} сургуулийн мэдээлэл шинэчлэгдлээ!`);
+                if (data.error) {
+                    alert(`Алдаа: ${data.error}`);
+                } else {
+                    alert(`${foundCount} / ${totalCount} сургуулийн шинэ имэйлүүд олдлоо.`);
+                }
+
+                // Log failures specifically
+                const failures = data.results.filter((r: any) => !r.success);
+                if (failures.length > 0) {
+                    console.error('[SYNC] Individual failures:', failures);
+                }
 
                 // Background Refetch for consistency
                 const q = query(collection(db!, 'partnerships'), orderBy('createdAt', 'desc'));
@@ -243,7 +254,7 @@ export default function PartnershipsPage() {
                 const freshData = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Partnership));
                 setPartnerships(freshData);
             } else {
-                alert('Шинэ имэйл олдсонгүй.');
+                alert(data.error || 'Шинэ имэйл олдсонгүй.');
             }
         } catch (e) {
             console.error('Sync error:', e);

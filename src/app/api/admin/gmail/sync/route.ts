@@ -11,6 +11,12 @@ const openai = new OpenAI({
 });
 
 export async function POST(req: Request) {
+    // 1. Validate Environment
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey || openAiKey.includes('your_')) {
+        return NextResponse.json({ error: 'OpenAI API Key is missing or placeholder. Please set it in .env' }, { status: 500 });
+    }
+
     try {
         const gmail = await getGmailClient();
 
@@ -29,8 +35,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Invalid partners data' }, { status: 400 });
         }
 
-        // Relaxed Firebase check: allow sync to proceed even if Firebase credentials are not fully set,
-        // as long as the 'db' object is handled gracefully later.
+        console.log(`[SYNC] Starting sync for ${partners.length} partners`);
 
         for (const partner of partners) {
             try {
@@ -41,16 +46,21 @@ export async function POST(req: Request) {
                     continue;
                 }
 
-                console.log(`[SYNC] Processing partner: ${name} (${email || 'no email'})`);
-
-                // Multi-query strategy for maximum coverage
+                // Build a list of search queries from most specific to broadest
                 const queries = [];
                 if (email) {
                     queries.push(`from:${email} OR to:${email}`);
                     queries.push(`"${email}"`);
+
+                    // Domain-based fallback: if a@waikato.ac.nz doesn't work, try waikato.ac.nz
+                    const domainMatch = email.match(/@([a-zA-Z0-9.-]+\.[a-zA-Z0-9.-]+)/);
+                    if (domainMatch && domainMatch[1]) {
+                        queries.push(domainMatch[1]);
+                    }
                 }
                 if (name) {
                     queries.push(`"${name}"`);
+                    queries.push(name); // bare name
                 }
 
                 let messages: any[] = [];
@@ -62,18 +72,22 @@ export async function POST(req: Request) {
                     });
                     if (listRes.data.messages && listRes.data.messages.length > 0) {
                         messages = listRes.data.messages;
-                        console.log(`[SYNC] Found ${messages.length} messages using query: ${q}`);
+                        console.log(`[SYNC] Found ${messages.length} messages for ${name} using query: ${q}`);
                         break;
                     }
                 }
 
                 if (messages.length === 0) {
-                    console.log(`[SYNC] No messages found for ${name}`);
-                    syncResults.push({ partnerId: partner.id, success: true, emailsCount: 0, emails: [], note: `No emails found for ${email || name}` });
+                    syncResults.push({
+                        partnerId: partner.id,
+                        success: true,
+                        emailsCount: 0,
+                        emails: [],
+                        note: 'No messages found'
+                    });
                     continue;
                 }
 
-                console.log(`[SYNC] Found ${messages.length} messages for ${email || name}. Fetching details...`);
                 const fetchedEmails = [];
                 let fullThreadContent = "";
 
@@ -105,19 +119,21 @@ export async function POST(req: Request) {
 
                 const sortedEmails = fetchedEmails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-                console.log(`[SYNC] Analyzing with AI for ${partner.name}`);
+                // Optional AI Analysis - don't fail the sync if AI fails
+                let analysis: any = { status: partner.status, summary: partner.lastUpdateNote };
+                try {
+                    const systemPrompt = `Analyze email history for ${name}. Respond in JSON ONLY: { "status": "keyword", "summary": "1-2 sentences in Mongolian summarizing state", "nextAction": "mn string" }`;
+                    const aiRes = await openai.chat.completions.create({
+                        model: "gpt-4o",
+                        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: fullThreadContent }],
+                        response_format: { type: "json_object" }
+                    });
+                    const parsed = JSON.parse(aiRes.choices[0].message.content || '{}');
+                    if (parsed.status || parsed.summary) analysis = parsed;
+                } catch (aiErr: any) {
+                    console.warn(`[SYNC] AI Analysis failed for ${name}:`, aiErr.message);
+                }
 
-                // Analyze with AI
-                const systemPrompt = `Analyze email history for ${name}. Respond in JSON ONLY: { "status": "keyword", "summary": "1-2 sentences in Mongolian summarizing state", "nextAction": "mn string" }`;
-                const aiRes = await openai.chat.completions.create({
-                    model: "gpt-4o",
-                    messages: [{ role: "system", content: systemPrompt }, { role: "user", content: fullThreadContent }],
-                    response_format: { type: "json_object" }
-                });
-
-                const analysis = JSON.parse(aiRes.choices[0].message.content || '{}');
-
-                // Save to Firestore - ensure db is available
                 if (db) {
                     await db.collection('partnerships').doc(partner.id).update({
                         status: analysis.status || partner.status || 'contacted',
@@ -125,9 +141,6 @@ export async function POST(req: Request) {
                         updatedAt: new Date(),
                         emails: sortedEmails
                     });
-                    console.log(`[SYNC] Firestore updated success for ${partner.name}`);
-                } else {
-                    console.warn('[SYNC] Firestore db not initialized for update');
                 }
 
                 syncResults.push({
@@ -139,7 +152,7 @@ export async function POST(req: Request) {
                 });
 
             } catch (err: any) {
-                console.error(`[SYNC] Failed for partner ${partner.name}:`, err.message);
+                console.error(`[SYNC] Failed for ${partner.name}:`, err.message);
                 syncResults.push({ partnerId: partner.id, success: false, error: err.message });
             }
         }
@@ -147,7 +160,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
             success: true,
             results: syncResults,
-            processedCount: syncResults.filter(r => r.success).length
+            processedCount: syncResults.filter(r => r.success && r.emailsCount > 0).length
         });
 
     } catch (error: any) {
