@@ -1,8 +1,8 @@
 import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import OpenAI from 'openai';
 import { db } from '@/lib/firebase/admin';
+import { getGmailClient } from '@/lib/gmail/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,60 +11,26 @@ const openai = new OpenAI({
 });
 
 export async function POST(req: Request) {
-    const { origin } = new URL(req.url);
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectBase = process.env.NEXTAUTH_URL || origin;
-    const redirectUri = `${redirectBase}/api/admin/gmail/callback`;
-
-    const openAiKey = process.env.OPENAI_API_KEY;
-    const firebaseKey = process.env.FIREBASE_PRIVATE_KEY;
-    const firebaseEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-
-    if (!clientId || !clientSecret) {
-        return NextResponse.json({ error: 'Google OAuth credentials missing' }, { status: 500 });
-    }
-    if (!openAiKey) {
-        return NextResponse.json({ error: 'OpenAI API Key missing' }, { status: 500 });
-    }
-    // Relaxed Firebase check: allow sync to proceed even if Firebase credentials are not fully set,
-    // as long as the 'db' object is handled gracefully later.
-
-    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-    const cookieStore = await cookies();
-    const tokenCookie = cookieStore.get('gmail_tokens');
-
     try {
-        if (!tokenCookie) {
-            return NextResponse.json({ error: 'Not authenticated with Gmail. Please click "Connect Gmail" first.' }, { status: 401 });
-        }
+        const gmail = await getGmailClient();
 
-        const tokens = JSON.parse(tokenCookie.value);
-        oauth2Client.setCredentials(tokens);
-
-        const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-
-        // --- DIAGNOSTIC: Check who is authenticated ---
-        let authEmail = "unknown";
-        try {
-            const profile = await gmail.users.getProfile({ userId: 'me' });
-            authEmail = profile.data.emailAddress || "unknown";
-            console.log(`[SYNC] Authenticated as: ${authEmail}`);
-        } catch (authErr: any) {
-            console.error('[SYNC] Auth Check Failed:', authErr.message);
-            return NextResponse.json({ error: `Gmail Auth failed: ${authErr.message}` }, { status: 401 });
+        if (!gmail) {
+            console.error('[SYNC] No Gmail client: cookie missing or invalid');
+            return NextResponse.json({
+                error: 'Not authenticated with Gmail. Please click "Connect Gmail" again.'
+            }, { status: 401 });
         }
 
         const body = await req.json();
         const partners = body.partners;
-
-        console.log(`[SYNC] Starting sync for ${partners?.length || 0} partners from account: ${authEmail}`);
         const syncResults = [];
 
         if (!partners || !Array.isArray(partners)) {
             return NextResponse.json({ error: 'Invalid partners data' }, { status: 400 });
         }
+
+        // Relaxed Firebase check: allow sync to proceed even if Firebase credentials are not fully set,
+        // as long as the 'db' object is handled gracefully later.
 
         for (const partner of partners) {
             try {

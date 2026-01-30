@@ -25,6 +25,11 @@ export async function GET(req: Request) {
         const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
         const { tokens } = await oauth2Client.getToken(code);
 
+        console.log('[GMAIL Callback] Tokens received. Expiry:', tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'none');
+        if (!tokens.refresh_token) {
+            console.warn('[GMAIL Callback] WARNING: No refresh_token received. Connection will only last for 1 hour.');
+        }
+
         const cookieStore = await cookies();
         cookieStore.set('gmail_tokens', JSON.stringify(tokens), {
             httpOnly: true,
