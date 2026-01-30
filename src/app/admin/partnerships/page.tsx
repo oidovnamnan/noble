@@ -79,9 +79,11 @@ export default function PartnershipsPage() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('gmail') === 'connected') {
             setIsGmailConnected(true);
-            alert('Gmail амжилттай холбогдлоо!');
-            // Clear URL to prevent alert on refresh
+            // Clear URL FIRST to prevent alert on refresh if alert blocks
             window.history.replaceState({}, '', window.location.pathname);
+            setTimeout(() => {
+                alert('Gmail амжилттай холбогдлоо!');
+            }, 100);
         }
     }, []);
 
@@ -92,11 +94,28 @@ export default function PartnershipsPage() {
     const handleSyncAll = async () => {
         setIsSyncing(true);
         try {
+            // Filter and clean partners for sync
+            const partnersToSync = partnerships.map(p => {
+                let email = p.contactEmail?.trim() || '';
+
+                // Fallback: Try to extract email from contactPerson if it contains one
+                if (!email && p.contactPerson?.includes('@')) {
+                    const match = p.contactPerson.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/);
+                    if (match) email = match[1];
+                }
+
+                return { id: p.id, name: p.name, contactEmail: email };
+            }).filter(p => !!p.contactEmail);
+
+            if (partnersToSync.length === 0) {
+                alert('Синхрончлох боломжтой имэйл хаягтай партнер олдсонгүй. Партнерын мэдээлэлд имэйл хаягийг нь оруулна уу.');
+                setIsSyncing(false);
+                return;
+            }
+
             const res = await fetch('/api/admin/gmail/sync', {
                 method: 'POST',
-                body: JSON.stringify({
-                    partners: partnerships.map(p => ({ id: p.id, name: p.name, contactEmail: p.contactEmail }))
-                })
+                body: JSON.stringify({ partners: partnersToSync })
             });
             const data = await res.json();
             if (data.results && data.results.length > 0) {

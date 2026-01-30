@@ -39,13 +39,14 @@ export async function POST(req: Request) {
         const syncResults = [];
 
         for (const partner of partners) {
-            if (!partner.contactEmail) continue;
+            const email = partner.contactEmail?.trim();
+            if (!email) continue;
 
-            // Fetch last 10 messages to build a history
+            // Broader search to catch all interactions
             const listRes = await gmail.users.messages.list({
                 userId: 'me',
-                q: `from:${partner.contactEmail} OR to:${partner.contactEmail}`,
-                maxResults: 10
+                q: email,
+                maxResults: 30
             });
 
             const messages = listRes.data.messages || [];
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
                     snippet,
                     from,
                     date: new Date(date).toISOString(),
-                    isInbound: from.includes(partner.contactEmail)
+                    isInbound: from.toLowerCase().includes(email.toLowerCase())
                 });
 
                 fullThreadContent += `From: ${from}\nDate: ${date}\nContent: ${snippet}\n---\n`;
