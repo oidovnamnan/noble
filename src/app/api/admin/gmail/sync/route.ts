@@ -29,11 +29,22 @@ export async function POST(req: Request) {
         }
 
         // Diagnostic: Get exact profile email
+        // We try BOTH Gmail profile AND OAuth2 userinfo for redundancy
         try {
-            const profile = await gmail.users.getProfile({ userId: 'me' });
-            authEmail = profile.data.emailAddress || "unknown";
+            const profile = await gmail.users.getProfile({ userId: 'me' }).catch(() => null);
+            if (profile?.data?.emailAddress) {
+                authEmail = profile.data.emailAddress;
+            } else {
+                // Try OAuth2 userinfo as fallback
+                const oauth2 = google.oauth2({ version: 'v2', auth: (gmail as any)._options.auth });
+                const userinfo = await oauth2.userinfo.get().catch(() => null);
+                if (userinfo?.data?.email) {
+                    authEmail = userinfo.data.email;
+                }
+            }
+            console.log(`[SYNC] Verified account: ${authEmail}`);
         } catch (pe) {
-            console.warn('[SYNC] Profile check failed:', pe);
+            console.warn('[SYNC] Account identification failed:', pe);
         }
 
         const body = await req.json();
@@ -71,17 +82,22 @@ export async function POST(req: Request) {
                 if (shortName && shortName.length > 3) queries.push(shortName);
 
                 let messages: any[] = [];
+                let lastSuccessQuery = "";
+
                 for (const q of queries) {
-                    const listRes = await gmail.users.messages.list({
-                        userId: 'me',
-                        q: q,
-                        maxResults: 15,
-                        includeSpamTrash: true
-                    });
-                    if (listRes.data.messages && listRes.data.messages.length > 0) {
-                        messages = listRes.data.messages;
-                        console.log(`[SYNC] Found ${messages.length} messages for ${cleanName} using query: ${q}`);
-                        break;
+                    try {
+                        const listRes = await gmail.users.messages.list({
+                            userId: 'me',
+                            q: q,
+                            maxResults: 15
+                        });
+                        if (listRes.data.messages && listRes.data.messages.length > 0) {
+                            messages = listRes.data.messages;
+                            lastSuccessQuery = q;
+                            break;
+                        }
+                    } catch (listErr: any) {
+                        console.error(`[SYNC] Query failed [${q}]:`, listErr.message);
                     }
                 }
 
@@ -91,10 +107,12 @@ export async function POST(req: Request) {
                         success: true,
                         emailsCount: 0,
                         emails: [],
-                        note: 'No messages found'
+                        note: 'No messages found after multi-query search'
                     });
                     continue;
                 }
+
+                console.log(`[SYNC] Found ${messages.length} messages for ${partner.name} via [${lastSuccessQuery}]`);
 
                 const fetchedEmails = [];
                 let fullThreadContent = "";
